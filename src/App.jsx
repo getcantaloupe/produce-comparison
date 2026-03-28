@@ -546,7 +546,7 @@ function ExecSummary({ stats }) {
 }
 
 export default function App() {
-  const [tab, setTab] = useState("compare");
+  const [tab, setTab] = useState("summary");
   const [search, setSearch] = useState("");
   const [selectedCat, setSelectedCat] = useState("All");
   const [unitFilter, setUnitFilter] = useState("all");
@@ -605,9 +605,9 @@ export default function App() {
         <p style={{ fontSize:11, color:"#52525b", margin:"4px 0 0", fontFamily:"'JetBrains Mono',monospace" }}>PSFC · Farm to People · FreshDirect — March 27, 2026</p>
         <div style={{ display:"flex", gap:4, marginTop:12, flexWrap:"wrap" }}>
           {[
-            {id:"compare",label:"Comparison",count:DATA.length},
             {id:"summary",label:"Summary",color:"#a78bfa"},
             {id:"basket",label:"Basket Cost",color:"#ec4899"},
+            {id:"compare",label:"Comparison",count:DATA.length},
             {id:"psfc",label:"PSFC",count:PSFC.length,color:RC.PSFC},
             {id:"ftp",label:"FTP",count:FTP.length,color:RC.FTP},
             {id:"fd",label:"FreshDirect",count:FD.length,color:RC.FD},
