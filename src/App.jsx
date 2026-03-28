@@ -303,7 +303,7 @@ function BasketCost() {
       <p style={{ fontSize:11, color:"#52525b", margin:"0 0 16px" }}>20 common items · prices as of March 27, 2026 · PSFC as baseline</p>
       
       {/* ANCHOR CARD: PSFC baseline + 3 columns showing premium/discount */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:10, marginBottom:20 }}>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(150px, 1fr))", gap:10, marginBottom:20 }}>
         {/* PSFC anchor */}
         <div style={{ background:"#111114", borderRadius:10, padding:14, border:`2px solid ${RC.PSFC}44`, textAlign:"center" }}>
           <div style={{ fontSize:10, color:RC.PSFC, fontWeight:700, textTransform:"uppercase", letterSpacing:1 }}>PSFC (Baseline)</div>
@@ -337,7 +337,7 @@ function BasketCost() {
       {/* APPLES TO APPLES — only items priced at all 4 */}
       {intTotal.n > 0 && <div style={{ background:"#111114", borderRadius:10, padding:14, border:"1px solid #27272a", marginBottom:20 }}>
         <div style={{ fontSize:10, color:"#a78bfa", fontWeight:700, textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Apples-to-Apples ({intTotal.n} items priced at all 4)</div>
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(4, 1fr)", gap:10 }}>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(130px, 1fr))", gap:10 }}>
           {[
             {name:"PSFC",total:intTotal.psfc,color:RC.PSFC},
             {name:"FTP",total:intTotal.ftp,color:RC.FTP},
@@ -362,7 +362,8 @@ function BasketCost() {
       </div>}
 
       {/* ITEM BREAKDOWN TABLE */}
-      <table style={{ width:"100%", borderCollapse:"collapse", fontSize:11 }}>
+      <div style={{ overflowX:"auto" }}>
+      <table style={{ width:"100%", borderCollapse:"collapse", fontSize:11, minWidth:600 }}>
         <thead><tr>
           {["Item","Qty","PSFC","FTP","","FD Organic","","FD Conv.",""].map((h,i) => (
             <th key={i} style={{ textAlign:i<2?"left":"center", padding:"8px 6px", color:i===4||i===6||i===8?"#52525b":"#71717a", fontWeight:600, fontSize:9, textTransform:"uppercase", letterSpacing:0.8, borderBottom:"1px solid #1c1c22", fontFamily:mono }}>{i===4||i===6||i===8?"vs PSFC":h}</th>
@@ -422,6 +423,7 @@ function BasketCost() {
           </tr>
         </tbody>
       </table>
+      </div>
       <div style={{ marginTop:12, fontSize:9, color:"#3f3f46", lineHeight:1.6 }}>
         Note: Totals include different item counts per retailer due to availability. The "Apples-to-Apples" section above compares only items priced at all 4.
         FD Conventional may show as a discount vs PSFC Organic — this reflects the organic premium, not just retailer markup.
@@ -483,7 +485,7 @@ function ExecSummary({ stats }) {
       </div>
 
       {/* TOP OUTLIERS */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:20 }}>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(250px, 1fr))", gap:16, marginBottom:20 }}>
         <div style={{ background:"#111114", borderRadius:10, padding:14, border:"1px solid #ef444433" }}>
           <div style={{ fontSize:11, fontWeight:700, color:"#ef4444", marginBottom:10 }}>🔴 Biggest FTP Premiums over PSFC</div>
           {top5.map((d,i) => (
@@ -596,12 +598,12 @@ export default function App() {
   const s = { fontFamily:"'DM Sans','Helvetica Neue',sans-serif" };
 
   return (
-    <div style={{ ...s, background:"#09090b", color:"#e4e4e7", minHeight:"100vh" }}>
+    <div style={{ ...s, background:"#09090b", color:"#e4e4e7", minHeight:"100vh", overflowX:"hidden" }}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
       <div style={{ padding:"20px 24px 16px", borderBottom:"1px solid #1c1c22" }}>
         <h1 style={{ fontSize:20, fontWeight:700, margin:0, color:"#fafafa", letterSpacing:"-0.5px" }}>Brooklyn Produce Price Comparison</h1>
         <p style={{ fontSize:11, color:"#52525b", margin:"4px 0 0", fontFamily:"'JetBrains Mono',monospace" }}>PSFC · Farm to People · FreshDirect — March 27, 2026</p>
-        <div style={{ display:"flex", gap:4, marginTop:12 }}>
+        <div style={{ display:"flex", gap:4, marginTop:12, flexWrap:"wrap" }}>
           {[
             {id:"compare",label:"Comparison",count:DATA.length},
             {id:"summary",label:"Summary",color:"#a78bfa"},
@@ -707,7 +709,7 @@ export default function App() {
                 isExp && (
                   <tr key={`${idx}-d`} style={{ background:"#111114" }}>
                     <td colSpan={11} style={{ padding:"12px 16px", borderBottom:"1px solid #1c1c22" }}>
-                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12 }}>
+                      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(200px, 1fr))", gap:12 }}>
                         {[
                           {name:"PSFC",raw:row.psfc,norm:row.psfcNorm,unit:row.psfcUnit,org:row.psfcOrg,color:RC.PSFC,desc:"Park Slope Food Coop"},
                           {name:"Farm to People",raw:row.ftp,norm:row.ftpNorm,unit:row.ftpUnit,org:row.ftpOrg,color:RC.FTP,desc:"Farm-direct delivery"},
