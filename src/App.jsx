@@ -549,107 +549,57 @@ function Productivity() {
   const mono = "'JetBrains Mono',monospace";
   const COLOR = "#14b8a6";
 
-  const DEFAULTS = { ordersPerDay: 10000, ordersPerHour: 50, avgDailyHours: 14, aov: 100, laborPct: 10, targetLaborPct: 8 };
-
-  const [inputs, setInputs] = useState(DEFAULTS);
-  const [scenarios, setScenarios] = useState([
-    { name: "Today",        ordersPerDay: 10000, ordersPerHour: 50, avgDailyHours: 14, aov: 100, laborPct: 10 },
-    { name: "Quick win",    ordersPerDay: 10000, ordersPerHour: 55, avgDailyHours: 14, aov: 100, laborPct: 9  },
-    { name: "Target",       ordersPerDay: 10000, ordersPerHour: 60, avgDailyHours: 14, aov: 100, laborPct: 8  },
-    { name: "Stretch",      ordersPerDay: 15000, ordersPerHour: 65, avgDailyHours: 14, aov: 105, laborPct: 7  },
-    { name: "Best-in-class",ordersPerDay: 20000, ordersPerHour: 75, avgDailyHours: 16, aov: 110, laborPct: 6  },
-  ]);
-
-  const compute = (i) => {
-    const opd = +i.ordersPerDay || 0;
-    const oph = +i.ordersPerHour || 0;
-    const adh = +i.avgDailyHours || 0;
-    const aov = +i.aov || 0;
-    const lp  = (+i.laborPct || 0) / 100;
-    const laborHoursPerDay = oph > 0 ? opd / oph : 0;
-    const workersNeeded = adh > 0 ? laborHoursPerDay / adh : 0;
-    const ordersPerWorkerPerDay = oph * adh;
-    const dailyRevenue = opd * aov;
-    const weeklyRevenue = dailyRevenue * 7;
-    const monthlyRevenue = dailyRevenue * 30;
-    const annualRevenue = dailyRevenue * 365;
-    const dailyLaborCost = dailyRevenue * lp;
-    const annualLaborCost = annualRevenue * lp;
-    const impliedHourlyRate = laborHoursPerDay > 0 ? dailyLaborCost / laborHoursPerDay : 0;
-    const laborCostPerOrder = opd > 0 ? dailyLaborCost / opd : 0;
-    const revenuePerLaborHour = laborHoursPerDay > 0 ? dailyRevenue / laborHoursPerDay : 0;
-    const grossExLabor = dailyRevenue - dailyLaborCost;
-    const annualGrossExLabor = annualRevenue - annualLaborCost;
-    return {
-      laborHoursPerDay, workersNeeded, ordersPerWorkerPerDay,
-      dailyRevenue, weeklyRevenue, monthlyRevenue, annualRevenue,
-      dailyLaborCost, annualLaborCost, impliedHourlyRate, laborCostPerOrder,
-      revenuePerLaborHour, grossExLabor, annualGrossExLabor,
-    };
+  const DEFAULTS = {
+    baselineOPH: 50,
+    improvedOPH: 75,
+    wagePerHour: 20,
+    aov: 100,
+    laborPct: 10,
+    laborPctReduction: 1,
+    boxes: 100,
   };
 
-  const out = useMemo(() => compute(inputs), [inputs]);
-  const target = useMemo(() => compute({ ...inputs, laborPct: inputs.targetLaborPct }), [inputs]);
+  const [i, setI] = useState(DEFAULTS);
+  const set = (k, v) => setI(p => ({ ...p, [k]: v === "" ? "" : +v }));
+  const reset = () => setI(DEFAULTS);
 
-  const dailySavings = out.dailyLaborCost - target.dailyLaborCost;
-  const annualSavings = out.annualLaborCost - target.annualLaborCost;
-  const perPointAnnualSavings = (out.annualRevenue || 0) * 0.01;
+  const wage = +i.wagePerHour || 0;
+  const aov = +i.aov || 0;
+  const baseOPH = +i.baselineOPH || 0;
+  const newOPH = +i.improvedOPH || 0;
+  const pctRed = (+i.laborPctReduction || 0) / 100;
+  const boxes = +i.boxes || 0;
 
-  const baselineDailyLabor = DEFAULTS.ordersPerDay * DEFAULTS.aov * (DEFAULTS.laborPct / 100);
-  const baselineHours = DEFAULTS.ordersPerHour > 0 ? DEFAULTS.ordersPerDay / DEFAULTS.ordersPerHour : 0;
-  const baselineImpliedRate = baselineHours > 0 ? baselineDailyLabor / baselineHours : 0;
+  const baseLaborPerBox = baseOPH > 0 ? wage / baseOPH : 0;
+  const newLaborPerBox = newOPH > 0 ? wage / newOPH : 0;
+  const speedSavingsPerBox = baseLaborPerBox - newLaborPerBox;
+  const pctSavingsPerBox = pctRed * aov;
+  const combinedPerBox = speedSavingsPerBox + pctSavingsPerBox;
 
-  const leverImpact = (key) => {
-    const inp = { ...DEFAULTS, [key]: +inputs[key] || 0 };
-    const opd = +inp.ordersPerDay, oph = +inp.ordersPerHour, aov = +inp.aov;
-    const hours = oph > 0 ? opd / oph : 0;
-    const laborCostDaily = hours * baselineImpliedRate;
-    const revenueDaily = opd * aov;
-    const effectiveLaborPct = revenueDaily > 0 ? (laborCostDaily / revenueDaily) * 100 : 0;
-    return {
-      laborCostDaily, revenueDaily, effectiveLaborPct,
-      dailyLaborSavings: baselineDailyLabor - laborCostDaily,
-      annualLaborSavings: (baselineDailyLabor - laborCostDaily) * 365,
-      laborPctDelta: DEFAULTS.laborPct - effectiveLaborPct,
-    };
+  const speedSavingsTotal = speedSavingsPerBox * boxes;
+  const pctSavingsTotal = pctSavingsPerBox * boxes;
+  const combinedTotal = combinedPerBox * boxes;
+
+  const fmtUSD = (v) => {
+    if (v == null || !isFinite(v)) return "—";
+    return "$" + (+v).toFixed(2);
   };
-
-  const deltaPts = (+inputs.laborPct || 0) - (+inputs.targetLaborPct || 0);
-  const targetEqualsCurrent = Math.abs(deltaPts) < 0.001;
-
-  const fmtMoney = (v) => {
+  const fmtBig = (v) => {
     if (v == null || !isFinite(v)) return "—";
     if (Math.abs(v) >= 1_000_000) return "$" + (v / 1_000_000).toFixed(2) + "M";
-    if (Math.abs(v) >= 1_000) return "$" + (v / 1_000).toFixed(1) + "K";
-    return "$" + v.toFixed(2);
+    if (Math.abs(v) >= 10_000) return "$" + (v / 1_000).toFixed(1) + "K";
+    return "$" + (+v).toLocaleString(undefined, { maximumFractionDigits: 2 });
   };
-  const fmtMoneyFull = (v) => v == null || !isFinite(v) ? "—" : "$" + Math.round(v).toLocaleString();
-  const fmtNum = (v, d = 1) => v == null || !isFinite(v) ? "—" : (+v).toFixed(d);
   const fmtInt = (v) => v == null || !isFinite(v) ? "—" : Math.round(v).toLocaleString();
-  const fmtPct = (v, d = 1) => v == null || !isFinite(v) ? "—" : (+v).toFixed(d) + "%";
 
   const inputDefs = [
-    { key: "ordersPerDay",    label: "Orders / Day",        step: 100,  min: 0, suffix: "orders" },
-    { key: "ordersPerHour",   label: "Orders / Hour",       step: 1,    min: 0, suffix: "orders/hr" },
-    { key: "avgDailyHours",   label: "Avg Daily Hours",     step: 0.5,  min: 0, max: 24, suffix: "hrs" },
-    { key: "aov",             label: "AOV (avg order value)", step: 1,  min: 0, prefix: "$" },
-    { key: "laborPct",        label: "Labor % of Revenue",  step: 0.5,  min: 0, max: 100, suffix: "%" },
-    { key: "targetLaborPct",  label: "Target Labor %",      step: 0.5,  min: 0, max: 100, suffix: "%" },
+    { key: "baselineOPH",        label: "Baseline Orders / Hour", step: 1,   suffix: "orders/hr" },
+    { key: "improvedOPH",        label: "Improved Orders / Hour", step: 1,   suffix: "orders/hr" },
+    { key: "wagePerHour",        label: "Labor Wage / Hour",      step: 0.5, prefix: "$" },
+    { key: "aov",                label: "AOV per Box",            step: 1,   prefix: "$" },
+    { key: "laborPct",           label: "Current Labor %",        step: 0.5, suffix: "%" },
+    { key: "laborPctReduction",  label: "Labor % Reduction",      step: 0.25, suffix: "pts" },
   ];
-
-  const updateInput = (key, v) => setInputs(p => ({ ...p, [key]: v === "" ? "" : +v }));
-  const resetInputs = () => setInputs(DEFAULTS);
-
-  const updateScenario = (idx, key, v) => {
-    setScenarios(prev => prev.map((s, i) => i === idx ? { ...s, [key]: key === "name" ? v : (v === "" ? "" : +v) } : s));
-  };
-  const fillColumn = (key, value) => {
-    setScenarios(prev => prev.map(s => ({ ...s, [key]: value })));
-  };
-  const addScenario = () => setScenarios(prev => [...prev, { name: "Scenario " + (prev.length + 1), ordersPerDay: DEFAULTS.ordersPerDay, ordersPerHour: DEFAULTS.ordersPerHour, avgDailyHours: DEFAULTS.avgDailyHours, aov: DEFAULTS.aov, laborPct: DEFAULTS.laborPct }]);
-  const removeScenario = (idx) => setScenarios(prev => prev.filter((_, i) => i !== idx));
-  const loadScenario = (s) => setInputs(p => ({ ...p, ordersPerDay: s.ordersPerDay, ordersPerHour: s.ordersPerHour, avgDailyHours: s.avgDailyHours, aov: s.aov, laborPct: s.laborPct }));
-  const [focusedCell, setFocusedCell] = useState(null);
 
   const inputStyle = {
     background: "#111114", border: "1px solid #27272a", borderRadius: 6,
@@ -657,34 +607,21 @@ function Productivity() {
     width: "100%", outline: "none", boxSizing: "border-box",
   };
 
-  const cards = [
-    { label: "Daily Revenue",         value: fmtMoneyFull(out.dailyRevenue),     sub: `${fmtInt(inputs.ordersPerDay)} orders × ${fmtMoney(inputs.aov)} AOV`,             color: "#22c55e", big: true },
-    { label: "Annual Revenue",        value: fmtMoney(out.annualRevenue),        sub: "× 365 days",                                                                       color: "#22c55e", big: true },
-    { label: "Daily Labor Cost",      value: fmtMoneyFull(out.dailyLaborCost),   sub: `${fmtPct(inputs.laborPct)} of revenue`,                                            color: "#f97316" },
-    { label: "Annual Labor Cost",     value: fmtMoney(out.annualLaborCost),      sub: `${fmtPct(inputs.laborPct)} × annual rev.`,                                         color: "#f97316" },
-    { label: "Implied Hourly Rate",   value: fmtMoneyFull(out.impliedHourlyRate),sub: `${fmtMoneyFull(out.dailyLaborCost)} ÷ ${fmtNum(out.laborHoursPerDay, 1)} hrs`,     color: "#f97316" },
-    { label: "Labor $ / Order",       value: fmtMoney(out.laborCostPerOrder),    sub: "fully-loaded fulfillment cost",                                                    color: "#f97316" },
-    { label: "Labor Hours / Day",     value: fmtNum(out.laborHoursPerDay, 1),    sub: `${fmtInt(inputs.ordersPerDay)} ÷ ${fmtInt(inputs.ordersPerHour)} per hour`,        color: "#a78bfa" },
-    { label: "Workers Needed",        value: fmtNum(out.workersNeeded, 2),       sub: `at ${fmtNum(inputs.avgDailyHours, 1)} hrs/day each`,                               color: "#a78bfa" },
-    { label: "Output / Worker / Day", value: fmtInt(out.ordersPerWorkerPerDay),  sub: `${fmtInt(inputs.ordersPerHour)} × ${fmtNum(inputs.avgDailyHours, 1)} hrs`,         color: "#38bdf8" },
-    { label: "Revenue / Labor Hour",  value: fmtMoneyFull(out.revenuePerLaborHour), sub: "throughput density",                                                            color: "#38bdf8" },
-    { label: "Weekly Revenue",        value: fmtMoney(out.weeklyRevenue),        sub: `${fmtInt(out.dailyRevenue ? out.dailyRevenue / inputs.aov * 7 : 0)} orders`,        color: COLOR },
-    { label: "Monthly Revenue",       value: fmtMoney(out.monthlyRevenue),       sub: `${fmtInt(inputs.ordersPerDay * 30)} orders`,                                       color: COLOR },
-  ];
+  const presetBoxes = [10, 100, 1000, 10000];
 
   return (
     <div style={{ padding: "16px 24px" }}>
-      <div style={{ marginBottom: 10 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: "#fafafa" }}>Productivity Calculator</div>
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: "#fafafa" }}>Per-Box Savings Calculator</div>
         <div style={{ fontSize: 11, color: "#52525b", marginTop: 2 }}>
-          Goal: drive labor down as a % of revenue. Adjust inputs to see throughput, cost, and the dollar impact of reducing labor %.
+          Two levers: pick speed (orders/hour) and a labor-% reduction. See savings per box, then scale by box volume.
         </div>
       </div>
 
       <div style={{ background: "#0c0c0f", border: "1px solid #1c1c22", borderRadius: 10, padding: 16, marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
           <div style={{ fontSize: 10, color: COLOR, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, fontFamily: mono }}>Inputs</div>
-          <button onClick={resetInputs} style={{
+          <button onClick={reset} style={{
             background: "transparent", border: "1px solid #27272a", color: "#a1a1aa",
             borderRadius: 6, padding: "4px 10px", fontSize: 10, cursor: "pointer", fontFamily: mono,
           }}>Reset to defaults</button>
@@ -695,15 +632,9 @@ function Productivity() {
               <span style={{ fontSize: 10, color: "#71717a", textTransform: "uppercase", letterSpacing: 1, fontFamily: mono }}>{d.label}</span>
               <div style={{ position: "relative" }}>
                 {d.prefix && <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#52525b", fontSize: 13, fontFamily: mono, pointerEvents: "none" }}>{d.prefix}</span>}
-                <input
-                  type="number"
-                  value={inputs[d.key]}
-                  min={d.min}
-                  max={d.max}
-                  step={d.step}
-                  onChange={(e) => updateInput(d.key, e.target.value)}
-                  style={{ ...inputStyle, paddingLeft: d.prefix ? 22 : 10 }}
-                />
+                <input type="number" value={i[d.key]} step={d.step} min={0}
+                  onChange={(e) => set(d.key, e.target.value)}
+                  style={{ ...inputStyle, paddingLeft: d.prefix ? 22 : 10 }} />
                 {d.suffix && <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "#3f3f46", fontSize: 10, fontFamily: mono, pointerEvents: "none" }}>{d.suffix}</span>}
               </div>
             </label>
@@ -711,216 +642,89 @@ function Productivity() {
         </div>
       </div>
 
-      <div style={{ background: "#0c0c0f", border: `1px solid ${targetEqualsCurrent ? "#a78bfa44" : "#f9731644"}`, borderRadius: 10, padding: 16, marginBottom: 16 }}>
-        {targetEqualsCurrent ? (
-          <>
-            <div style={{ fontSize: 10, color: "#a78bfa", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, fontFamily: mono, marginBottom: 4 }}>Lever Sensitivity (Labor % held flat)</div>
-            <div style={{ fontSize: 11, color: "#52525b", marginBottom: 12 }}>
-              Target equals current labor %, so the lever is now operational. Each row shows how moving one input from baseline to current would shift labor cost and the effective labor %. Implied wage held constant at <span style={{ color: "#fafafa", fontFamily: mono }}>{fmtMoneyFull(baselineImpliedRate)}/hr</span> (derived from baseline defaults).
-            </div>
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, minWidth: 720 }}>
-                <thead>
-                  <tr>
-                    {["Lever", "Baseline", "Current", "Daily Labor $", "Effective Labor %", "Daily Savings", "Annual Savings"].map((h, i) => (
-                      <th key={i} style={{
-                        textAlign: i === 0 ? "left" : "right",
-                        padding: "6px 8px", color: "#52525b", fontWeight: 600, fontSize: 9,
-                        textTransform: "uppercase", letterSpacing: 0.8, borderBottom: "1px solid #1c1c22",
-                        fontFamily: mono, whiteSpace: "nowrap",
-                      }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {[
-                    { key: "ordersPerDay",   label: "Orders / Day",     fmt: fmtInt,             step: 100 },
-                    { key: "ordersPerHour",  label: "Orders / Hour",    fmt: fmtInt,             step: 1   },
-                    { key: "avgDailyHours",  label: "Avg Daily Hours",  fmt: (v) => fmtNum(v,1), step: 0.5 },
-                    { key: "aov",            label: "AOV",              fmt: (v) => "$" + (+v).toFixed(0), step: 1 },
-                  ].map((l, i) => {
-                    const r = leverImpact(l.key);
-                    const moved = (+inputs[l.key] || 0) !== (+DEFAULTS[l.key] || 0);
-                    const savingsColor = r.dailyLaborSavings > 0 ? "#22c55e" : r.dailyLaborSavings < 0 ? "#ef4444" : "#52525b";
-                    return (
-                      <tr key={i} style={{ background: i % 2 === 0 ? "#0c0c0f" : "transparent" }}>
-                        <td style={{ padding: "8px", borderBottom: "1px solid #1c1c22", color: moved ? "#fafafa" : "#71717a", fontWeight: moved ? 600 : 400 }}>{l.label}</td>
-                        <td style={{ padding: "8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: "#71717a" }}>{l.fmt(DEFAULTS[l.key])}</td>
-                        <td style={{ padding: "8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: moved ? "#fafafa" : "#71717a" }}>{l.fmt(inputs[l.key])}</td>
-                        <td style={{ padding: "8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: "#f97316" }}>{fmtMoneyFull(r.laborCostDaily)}</td>
-                        <td style={{ padding: "8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: r.effectiveLaborPct <= DEFAULTS.laborPct ? "#22c55e" : "#ef4444" }}>{fmtPct(r.effectiveLaborPct)}</td>
-                        <td style={{ padding: "8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: savingsColor, fontWeight: 600 }}>{fmtMoneyFull(r.dailyLaborSavings)}</td>
-                        <td style={{ padding: "8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: savingsColor, fontWeight: 700 }}>{fmtMoney(r.annualLaborSavings)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            <div style={{ fontSize: 10, color: "#3f3f46", marginTop: 10, fontFamily: mono, lineHeight: 1.6 }}>
-              AOV and Orders/Day don't change labor hours, so they show $0 labor savings — but they shift the effective labor %.
-              Orders/Hour and Avg Daily Hours change throughput density, which reduces hours and labor cost at fixed wage.
-            </div>
-          </>
-        ) : (
-          <>
-            <div style={{ fontSize: 10, color: "#f97316", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, fontFamily: mono, marginBottom: 4 }}>Labor Reduction Impact</div>
-            <div style={{ fontSize: 11, color: "#52525b", marginBottom: 12 }}>
-              Moving labor from <span style={{ color: "#fafafa", fontFamily: mono }}>{fmtPct(inputs.laborPct)}</span> → <span style={{ color: "#22c55e", fontFamily: mono }}>{fmtPct(inputs.targetLaborPct)}</span> ({deltaPts >= 0 ? "−" : "+"}{fmtNum(Math.abs(deltaPts), 1)} pts) at current volume.
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
-              {[
-                { label: "Current Labor Cost / Day", value: fmtMoneyFull(out.dailyLaborCost),     sub: `${fmtPct(inputs.laborPct)} of daily rev.`,    color: "#f97316" },
-                { label: "Target Labor Cost / Day",  value: fmtMoneyFull(target.dailyLaborCost),  sub: `${fmtPct(inputs.targetLaborPct)} of daily rev.`, color: "#22c55e" },
-                { label: "Daily Savings",            value: fmtMoneyFull(dailySavings),           sub: `${fmtPct(deltaPts)} of daily rev.`,           color: dailySavings >= 0 ? "#22c55e" : "#ef4444", big: true },
-                { label: "Annual Savings",           value: fmtMoney(annualSavings),              sub: "× 365 days",                                  color: annualSavings >= 0 ? "#22c55e" : "#ef4444", big: true },
-                { label: "Per 1pt Reduction",        value: fmtMoney(perPointAnnualSavings),      sub: "annual savings / labor-% point",              color: "#a78bfa" },
-                { label: "Annual Gross (ex-labor)",  value: fmtMoney(target.annualGrossExLabor),  sub: `revenue − labor at ${fmtPct(inputs.targetLaborPct)}`, color: "#22c55e" },
-              ].map((c, i) => (
-                <div key={i} style={{ background: "#111114", borderRadius: 10, padding: 14, border: `1px solid ${c.color}33` }}>
-                  <div style={{ fontSize: 10, color: c.color, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, fontFamily: mono }}>{c.label}</div>
-                  <div style={{ fontSize: c.big ? 26 : 22, fontWeight: 700, fontFamily: mono, color: "#fafafa", marginTop: 6, lineHeight: 1.1 }}>{c.value}</div>
-                  <div style={{ fontSize: 10, color: "#52525b", marginTop: 4, fontFamily: mono }}>{c.sub}</div>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10, marginBottom: 20 }}>
-        {cards.map((c, i) => (
-          <div key={i} style={{
-            background: "#111114", borderRadius: 10, padding: 14,
-            border: `1px solid ${c.color}33`, position: "relative", overflow: "hidden",
-          }}>
-            <div style={{ fontSize: 10, color: c.color, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, fontFamily: mono }}>{c.label}</div>
-            <div style={{ fontSize: c.big ? 28 : 24, fontWeight: 700, fontFamily: mono, color: "#fafafa", marginTop: 6, lineHeight: 1.1 }}>{c.value}</div>
-            <div style={{ fontSize: 10, color: "#52525b", marginTop: 4, fontFamily: mono }}>{c.sub}</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12, marginBottom: 16 }}>
+        <div style={{ background: "#111114", border: "1px solid #38bdf833", borderRadius: 10, padding: 16 }}>
+          <div style={{ fontSize: 10, color: "#38bdf8", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, fontFamily: mono }}>Speed Improvement</div>
+          <div style={{ fontSize: 11, color: "#52525b", marginTop: 2, marginBottom: 12 }}>
+            {fmtInt(baseOPH)} → {fmtInt(newOPH)} orders/hour at {fmtUSD(wage)}/hr wage
           </div>
-        ))}
+          <div style={{ display: "flex", gap: 16, marginBottom: 10, fontSize: 11, color: "#a1a1aa", fontFamily: mono }}>
+            <div><span style={{ color: "#52525b" }}>Now:</span> {fmtUSD(baseLaborPerBox)}/box</div>
+            <div><span style={{ color: "#52525b" }}>After:</span> {fmtUSD(newLaborPerBox)}/box</div>
+          </div>
+          <div style={{ fontSize: 10, color: "#71717a", fontFamily: mono, textTransform: "uppercase", letterSpacing: 1 }}>Savings / box</div>
+          <div style={{ fontSize: 36, fontWeight: 700, fontFamily: mono, color: speedSavingsPerBox >= 0 ? "#22c55e" : "#ef4444", lineHeight: 1.1 }}>{fmtUSD(speedSavingsPerBox)}</div>
+        </div>
+
+        <div style={{ background: "#111114", border: "1px solid #a78bfa33", borderRadius: 10, padding: 16 }}>
+          <div style={{ fontSize: 10, color: "#a78bfa", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, fontFamily: mono }}>Labor % Reduction</div>
+          <div style={{ fontSize: 11, color: "#52525b", marginTop: 2, marginBottom: 12 }}>
+            {(+i.laborPctReduction).toFixed(2)}pt reduction on a {fmtUSD(aov)} box
+          </div>
+          <div style={{ display: "flex", gap: 16, marginBottom: 10, fontSize: 11, color: "#a1a1aa", fontFamily: mono }}>
+            <div><span style={{ color: "#52525b" }}>Now:</span> {fmtUSD(((+i.laborPct) / 100) * aov)}/box</div>
+            <div><span style={{ color: "#52525b" }}>After:</span> {fmtUSD(((+i.laborPct - +i.laborPctReduction) / 100) * aov)}/box</div>
+          </div>
+          <div style={{ fontSize: 10, color: "#71717a", fontFamily: mono, textTransform: "uppercase", letterSpacing: 1 }}>Savings / box</div>
+          <div style={{ fontSize: 36, fontWeight: 700, fontFamily: mono, color: pctSavingsPerBox >= 0 ? "#22c55e" : "#ef4444", lineHeight: 1.1 }}>{fmtUSD(pctSavingsPerBox)}</div>
+        </div>
+
+        <div style={{ background: "#111114", border: `2px solid ${COLOR}66`, borderRadius: 10, padding: 16 }}>
+          <div style={{ fontSize: 10, color: COLOR, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, fontFamily: mono }}>Combined</div>
+          <div style={{ fontSize: 11, color: "#52525b", marginTop: 2, marginBottom: 12 }}>Both levers applied</div>
+          <div style={{ display: "flex", gap: 16, marginBottom: 10, fontSize: 11, color: "#a1a1aa", fontFamily: mono }}>
+            <div><span style={{ color: "#52525b" }}>Speed:</span> {fmtUSD(speedSavingsPerBox)}</div>
+            <div><span style={{ color: "#52525b" }}>Labor %:</span> {fmtUSD(pctSavingsPerBox)}</div>
+          </div>
+          <div style={{ fontSize: 10, color: "#71717a", fontFamily: mono, textTransform: "uppercase", letterSpacing: 1 }}>Total savings / box</div>
+          <div style={{ fontSize: 40, fontWeight: 700, fontFamily: mono, color: combinedPerBox >= 0 ? "#22c55e" : "#ef4444", lineHeight: 1.1 }}>{fmtUSD(combinedPerBox)}</div>
+        </div>
       </div>
 
-      <div style={{ background: "#0c0c0f", border: "1px solid #1c1c22", borderRadius: 10, padding: 16, marginBottom: 16 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
+      <div style={{ background: "#0c0c0f", border: `1px solid ${COLOR}44`, borderRadius: 10, padding: 16, marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
           <div>
-            <div style={{ fontSize: 10, color: COLOR, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, fontFamily: mono }}>Scenario Comparison</div>
-            <div style={{ fontSize: 10, color: "#52525b", marginTop: 2 }}>Edit any cell. Click a row to load it into the calculator above.</div>
+            <div style={{ fontSize: 10, color: COLOR, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, fontFamily: mono }}>Volume Multiplier</div>
+            <div style={{ fontSize: 11, color: "#52525b", marginTop: 2 }}>Total savings at this number of boxes.</div>
           </div>
-          <button onClick={addScenario} style={{
-            background: COLOR + "22", border: `1px solid ${COLOR}66`, color: COLOR,
-            borderRadius: 6, padding: "5px 12px", fontSize: 11, cursor: "pointer", fontFamily: mono, fontWeight: 600,
-          }}>+ Add scenario</button>
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            {presetBoxes.map(p => (
+              <button key={p} onClick={() => set("boxes", p)} style={{
+                background: boxes === p ? COLOR + "33" : "transparent",
+                border: `1px solid ${boxes === p ? COLOR : "#27272a"}`,
+                color: boxes === p ? COLOR : "#a1a1aa",
+                borderRadius: 6, padding: "4px 10px", fontSize: 10, cursor: "pointer", fontFamily: mono, fontWeight: 600,
+              }}>{fmtInt(p)}</button>
+            ))}
+            <div style={{ position: "relative" }}>
+              <input type="number" value={i.boxes} step={1} min={0}
+                onChange={(e) => set("boxes", e.target.value)}
+                style={{ ...inputStyle, width: 120, paddingRight: 38, fontSize: 13, padding: "6px 10px" }} />
+              <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "#3f3f46", fontSize: 10, fontFamily: mono, pointerEvents: "none" }}>boxes</span>
+            </div>
+          </div>
         </div>
-
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, minWidth: 1200 }}>
-            <thead>
-              <tr>
-                {(() => {
-                  const headers = ["Scenario", "Orders/Day", "Orders/Hour", "Hrs/Day", "AOV", "Labor %", "Daily Rev.", "Annual Rev.", "Daily Labor $", "Weekly Labor $", "Annual Labor $", "Δ Annual vs Default", "Workers", ""];
-                  return headers.map((h, i) => (
-                    <th key={i} style={{
-                      textAlign: i === 0 ? "left" : i === headers.length - 1 ? "center" : "right",
-                      padding: "8px 8px", color: i === 11 ? "#a78bfa" : "#52525b", fontWeight: 600, fontSize: 9,
-                      textTransform: "uppercase", letterSpacing: 0.8, borderBottom: "1px solid #1c1c22",
-                      fontFamily: mono, whiteSpace: "nowrap",
-                    }}>{h}</th>
-                  ));
-                })()}
-              </tr>
-            </thead>
-            <tbody>
-              {(() => {
-                const defaultRow = compute(DEFAULTS);
-                return scenarios.map((s, i) => {
-                  const r = compute(s);
-                  const weeklyLabor = r.dailyLaborCost * 7;
-                  const diffAnnual = r.annualLaborCost - defaultRow.annualLaborCost;
-                  const diffColor = Math.abs(diffAnnual) < 0.5 ? "#52525b" : diffAnnual < 0 ? "#22c55e" : "#ef4444";
-                  const diffSign = diffAnnual > 0 ? "+" : diffAnnual < 0 ? "−" : "";
-                  const cellInput = (key, step = 1) => {
-                    const isFocused = focusedCell && focusedCell.row === i && focusedCell.key === key;
-                    const canFill = key !== "name";
-                    return (
-                      <span style={{ position: "relative", display: "inline-block" }}>
-                        <input
-                          type={key === "name" ? "text" : "number"}
-                          value={s[key]}
-                          step={step}
-                          onChange={(e) => updateScenario(i, key, e.target.value)}
-                          onClick={(e) => e.stopPropagation()}
-                          style={{
-                            background: isFocused ? "#1c1c22" : "transparent",
-                            border: `1px solid ${isFocused ? "#3f3f46" : "transparent"}`,
-                            borderRadius: 4, padding: "4px 6px", color: "#fafafa",
-                            fontSize: 11, fontFamily: key === "name" ? "inherit" : mono,
-                            width: key === "name" ? 130 : 90, textAlign: key === "name" ? "left" : "right",
-                            outline: "none",
-                          }}
-                          onFocus={() => setFocusedCell({ row: i, key })}
-                          onBlur={() => setFocusedCell(prev => (prev && prev.row === i && prev.key === key) ? null : prev)}
-                        />
-                        {isFocused && canFill && (
-                          <button
-                            onMouseDown={(e) => e.preventDefault()}
-                            onClick={(e) => { e.stopPropagation(); fillColumn(key, +s[key] || 0); }}
-                            title="Apply this value to every row in this column"
-                            style={{
-                              position: "absolute", top: -22, right: 0,
-                              background: "#14b8a6", color: "#0c0c0f",
-                              border: "1px solid #14b8a6", borderRadius: 4,
-                              padding: "2px 6px", fontSize: 9, fontFamily: mono,
-                              fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
-                              boxShadow: "0 2px 6px rgba(0,0,0,0.4)", zIndex: 2,
-                            }}
-                          >Fill column ↕</button>
-                        )}
-                      </span>
-                    );
-                  };
-                  return (
-                    <tr key={i} onClick={() => loadScenario(s)} style={{ cursor: "pointer", background: i % 2 === 0 ? "#0c0c0f" : "transparent" }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = "#14141a"}
-                      onMouseLeave={(e) => e.currentTarget.style.background = i % 2 === 0 ? "#0c0c0f" : "transparent"}>
-                      <td style={{ padding: "4px 8px", borderBottom: "1px solid #1c1c22" }}>{cellInput("name")}</td>
-                      <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22" }}>{cellInput("ordersPerDay", 100)}</td>
-                      <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22" }}>{cellInput("ordersPerHour", 1)}</td>
-                      <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22" }}>{cellInput("avgDailyHours", 0.5)}</td>
-                      <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22" }}>{cellInput("aov", 1)}</td>
-                      <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22" }}>{cellInput("laborPct", 0.5)}</td>
-                      <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: "#22c55e", fontWeight: 600 }}>{fmtMoney(r.dailyRevenue)}</td>
-                      <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: "#22c55e", fontWeight: 600 }}>{fmtMoney(r.annualRevenue)}</td>
-                      <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: "#f97316", fontWeight: 600 }}>{fmtMoney(r.dailyLaborCost)}</td>
-                      <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: "#f97316", fontWeight: 600 }}>{fmtMoney(weeklyLabor)}</td>
-                      <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: "#f97316", fontWeight: 600 }}>{fmtMoney(r.annualLaborCost)}</td>
-                      <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: diffColor, fontWeight: 700 }}>{diffSign}{fmtMoney(Math.abs(diffAnnual))}</td>
-                      <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: "#a78bfa" }}>{fmtNum(r.workersNeeded, 2)}</td>
-                      <td style={{ padding: "4px 8px", textAlign: "center", borderBottom: "1px solid #1c1c22" }}>
-                        <button onClick={(e) => { e.stopPropagation(); removeScenario(i); }} style={{
-                          background: "transparent", border: "1px solid #27272a", color: "#71717a",
-                          borderRadius: 4, padding: "2px 8px", fontSize: 11, cursor: "pointer", fontFamily: mono,
-                        }} title="Remove scenario">×</button>
-                      </td>
-                    </tr>
-                  );
-                });
-              })()}
-            </tbody>
-          </table>
-        </div>
-        <div style={{ fontSize: 10, color: "#3f3f46", marginTop: 8, fontFamily: mono }}>
-          Δ Annual vs Default compares each scenario's annual labor $ against the defaults ({fmtInt(DEFAULTS.ordersPerDay)} orders/day · {fmtInt(DEFAULTS.ordersPerHour)} orders/hr · {fmtNum(DEFAULTS.avgDailyHours,1)} hrs · ${DEFAULTS.aov} AOV · {fmtPct(DEFAULTS.laborPct,0)} labor). Green = saves vs default · Red = costs more.
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10, marginTop: 12 }}>
+          {[
+            { label: "Speed savings",   value: fmtBig(speedSavingsTotal), sub: `${fmtUSD(speedSavingsPerBox)}/box × ${fmtInt(boxes)} boxes`, color: "#38bdf8" },
+            { label: "Labor % savings", value: fmtBig(pctSavingsTotal),   sub: `${fmtUSD(pctSavingsPerBox)}/box × ${fmtInt(boxes)} boxes`,   color: "#a78bfa" },
+            { label: "Combined total",  value: fmtBig(combinedTotal),     sub: `${fmtUSD(combinedPerBox)}/box × ${fmtInt(boxes)} boxes`,     color: COLOR, big: true },
+          ].map((c, idx) => (
+            <div key={idx} style={{ background: "#111114", borderRadius: 10, padding: 14, border: `1px solid ${c.color}33` }}>
+              <div style={{ fontSize: 10, color: c.color, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, fontFamily: mono }}>{c.label}</div>
+              <div style={{ fontSize: c.big ? 30 : 24, fontWeight: 700, fontFamily: mono, color: "#fafafa", marginTop: 6, lineHeight: 1.1 }}>{c.value}</div>
+              <div style={{ fontSize: 10, color: "#52525b", marginTop: 4, fontFamily: mono }}>{c.sub}</div>
+            </div>
+          ))}
         </div>
       </div>
 
       <div style={{ background: "#0c0c0f", borderRadius: 8, padding: 12, border: "1px solid #1c1c22", fontSize: 10, color: "#71717a", lineHeight: 1.8, fontFamily: mono }}>
         <div style={{ color: "#a1a1aa", fontWeight: 700, marginBottom: 4 }}>Formulas</div>
-        <div>Daily Revenue = Orders/Day × AOV · Annual = Daily × 365</div>
-        <div>Labor Cost = Revenue × Labor %  ·  Savings = (Labor % − Target %) × Revenue</div>
-        <div>Labor Hours/Day = Orders/Day ÷ Orders/Hour</div>
-        <div>Workers Needed = Labor Hours/Day ÷ Avg Daily Hours</div>
-        <div>Implied Hourly Rate = Daily Labor Cost ÷ Labor Hours/Day</div>
+        <div>Labor $ / box = Wage ÷ Orders per Hour</div>
+        <div>Speed savings / box = (Wage ÷ Baseline OPH) − (Wage ÷ Improved OPH)</div>
+        <div>Labor % savings / box = Reduction × AOV  ·  (e.g. 1% × $100 = $1.00)</div>
+        <div>Total savings = (Savings / box) × Boxes</div>
       </div>
     </div>
   );
