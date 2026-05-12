@@ -595,6 +595,28 @@ function Productivity() {
   const annualSavings = out.annualLaborCost - target.annualLaborCost;
   const perPointAnnualSavings = (out.annualRevenue || 0) * 0.01;
 
+  const baselineDailyLabor = DEFAULTS.ordersPerDay * DEFAULTS.aov * (DEFAULTS.laborPct / 100);
+  const baselineHours = DEFAULTS.ordersPerHour > 0 ? DEFAULTS.ordersPerDay / DEFAULTS.ordersPerHour : 0;
+  const baselineImpliedRate = baselineHours > 0 ? baselineDailyLabor / baselineHours : 0;
+
+  const leverImpact = (key) => {
+    const inp = { ...DEFAULTS, [key]: +inputs[key] || 0 };
+    const opd = +inp.ordersPerDay, oph = +inp.ordersPerHour, aov = +inp.aov;
+    const hours = oph > 0 ? opd / oph : 0;
+    const laborCostDaily = hours * baselineImpliedRate;
+    const revenueDaily = opd * aov;
+    const effectiveLaborPct = revenueDaily > 0 ? (laborCostDaily / revenueDaily) * 100 : 0;
+    return {
+      laborCostDaily, revenueDaily, effectiveLaborPct,
+      dailyLaborSavings: baselineDailyLabor - laborCostDaily,
+      annualLaborSavings: (baselineDailyLabor - laborCostDaily) * 365,
+      laborPctDelta: DEFAULTS.laborPct - effectiveLaborPct,
+    };
+  };
+
+  const deltaPts = (+inputs.laborPct || 0) - (+inputs.targetLaborPct || 0);
+  const targetEqualsCurrent = Math.abs(deltaPts) < 0.001;
+
   const fmtMoney = (v) => {
     if (v == null || !isFinite(v)) return "—";
     if (Math.abs(v) >= 1_000_000) return "$" + (v / 1_000_000).toFixed(2) + "M";
@@ -646,8 +668,6 @@ function Productivity() {
     { label: "Monthly Revenue",       value: fmtMoney(out.monthlyRevenue),       sub: `${fmtInt(inputs.ordersPerDay * 30)} orders`,                                       color: COLOR },
   ];
 
-  const deltaPts = (+inputs.laborPct || 0) - (+inputs.targetLaborPct || 0);
-
   return (
     <div style={{ padding: "16px 24px" }}>
       <div style={{ marginBottom: 10 }}>
@@ -687,27 +707,81 @@ function Productivity() {
         </div>
       </div>
 
-      <div style={{ background: "#0c0c0f", border: "1px solid #f9731644", borderRadius: 10, padding: 16, marginBottom: 16 }}>
-        <div style={{ fontSize: 10, color: "#f97316", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, fontFamily: mono, marginBottom: 4 }}>Labor Reduction Impact</div>
-        <div style={{ fontSize: 11, color: "#52525b", marginBottom: 12 }}>
-          Moving labor from <span style={{ color: "#fafafa", fontFamily: mono }}>{fmtPct(inputs.laborPct)}</span> → <span style={{ color: "#22c55e", fontFamily: mono }}>{fmtPct(inputs.targetLaborPct)}</span> ({deltaPts >= 0 ? "−" : "+"}{fmtNum(Math.abs(deltaPts), 1)} pts) at current volume.
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
-          {[
-            { label: "Current Labor Cost / Day", value: fmtMoneyFull(out.dailyLaborCost),     sub: `${fmtPct(inputs.laborPct)} of daily rev.`,    color: "#f97316" },
-            { label: "Target Labor Cost / Day",  value: fmtMoneyFull(target.dailyLaborCost),  sub: `${fmtPct(inputs.targetLaborPct)} of daily rev.`, color: "#22c55e" },
-            { label: "Daily Savings",            value: fmtMoneyFull(dailySavings),           sub: `${fmtPct(deltaPts)} of daily rev.`,           color: dailySavings >= 0 ? "#22c55e" : "#ef4444", big: true },
-            { label: "Annual Savings",           value: fmtMoney(annualSavings),              sub: "× 365 days",                                  color: annualSavings >= 0 ? "#22c55e" : "#ef4444", big: true },
-            { label: "Per 1pt Reduction",        value: fmtMoney(perPointAnnualSavings),      sub: "annual savings / labor-% point",              color: "#a78bfa" },
-            { label: "Annual Gross (ex-labor)",  value: fmtMoney(target.annualGrossExLabor),  sub: `revenue − labor at ${fmtPct(inputs.targetLaborPct)}`, color: "#22c55e" },
-          ].map((c, i) => (
-            <div key={i} style={{ background: "#111114", borderRadius: 10, padding: 14, border: `1px solid ${c.color}33` }}>
-              <div style={{ fontSize: 10, color: c.color, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, fontFamily: mono }}>{c.label}</div>
-              <div style={{ fontSize: c.big ? 26 : 22, fontWeight: 700, fontFamily: mono, color: "#fafafa", marginTop: 6, lineHeight: 1.1 }}>{c.value}</div>
-              <div style={{ fontSize: 10, color: "#52525b", marginTop: 4, fontFamily: mono }}>{c.sub}</div>
+      <div style={{ background: "#0c0c0f", border: `1px solid ${targetEqualsCurrent ? "#a78bfa44" : "#f9731644"}`, borderRadius: 10, padding: 16, marginBottom: 16 }}>
+        {targetEqualsCurrent ? (
+          <>
+            <div style={{ fontSize: 10, color: "#a78bfa", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, fontFamily: mono, marginBottom: 4 }}>Lever Sensitivity (Labor % held flat)</div>
+            <div style={{ fontSize: 11, color: "#52525b", marginBottom: 12 }}>
+              Target equals current labor %, so the lever is now operational. Each row shows how moving one input from baseline to current would shift labor cost and the effective labor %. Implied wage held constant at <span style={{ color: "#fafafa", fontFamily: mono }}>{fmtMoneyFull(baselineImpliedRate)}/hr</span> (derived from baseline defaults).
             </div>
-          ))}
-        </div>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, minWidth: 720 }}>
+                <thead>
+                  <tr>
+                    {["Lever", "Baseline", "Current", "Daily Labor $", "Effective Labor %", "Daily Savings", "Annual Savings"].map((h, i) => (
+                      <th key={i} style={{
+                        textAlign: i === 0 ? "left" : "right",
+                        padding: "6px 8px", color: "#52525b", fontWeight: 600, fontSize: 9,
+                        textTransform: "uppercase", letterSpacing: 0.8, borderBottom: "1px solid #1c1c22",
+                        fontFamily: mono, whiteSpace: "nowrap",
+                      }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { key: "ordersPerDay",   label: "Orders / Day",     fmt: fmtInt,             step: 100 },
+                    { key: "ordersPerHour",  label: "Orders / Hour",    fmt: fmtInt,             step: 1   },
+                    { key: "avgDailyHours",  label: "Avg Daily Hours",  fmt: (v) => fmtNum(v,1), step: 0.5 },
+                    { key: "aov",            label: "AOV",              fmt: (v) => "$" + (+v).toFixed(0), step: 1 },
+                  ].map((l, i) => {
+                    const r = leverImpact(l.key);
+                    const moved = (+inputs[l.key] || 0) !== (+DEFAULTS[l.key] || 0);
+                    const savingsColor = r.dailyLaborSavings > 0 ? "#22c55e" : r.dailyLaborSavings < 0 ? "#ef4444" : "#52525b";
+                    return (
+                      <tr key={i} style={{ background: i % 2 === 0 ? "#0c0c0f" : "transparent" }}>
+                        <td style={{ padding: "8px", borderBottom: "1px solid #1c1c22", color: moved ? "#fafafa" : "#71717a", fontWeight: moved ? 600 : 400 }}>{l.label}</td>
+                        <td style={{ padding: "8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: "#71717a" }}>{l.fmt(DEFAULTS[l.key])}</td>
+                        <td style={{ padding: "8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: moved ? "#fafafa" : "#71717a" }}>{l.fmt(inputs[l.key])}</td>
+                        <td style={{ padding: "8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: "#f97316" }}>{fmtMoneyFull(r.laborCostDaily)}</td>
+                        <td style={{ padding: "8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: r.effectiveLaborPct <= DEFAULTS.laborPct ? "#22c55e" : "#ef4444" }}>{fmtPct(r.effectiveLaborPct)}</td>
+                        <td style={{ padding: "8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: savingsColor, fontWeight: 600 }}>{fmtMoneyFull(r.dailyLaborSavings)}</td>
+                        <td style={{ padding: "8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: savingsColor, fontWeight: 700 }}>{fmtMoney(r.annualLaborSavings)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div style={{ fontSize: 10, color: "#3f3f46", marginTop: 10, fontFamily: mono, lineHeight: 1.6 }}>
+              AOV and Orders/Day don't change labor hours, so they show $0 labor savings — but they shift the effective labor %.
+              Orders/Hour and Avg Daily Hours change throughput density, which reduces hours and labor cost at fixed wage.
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ fontSize: 10, color: "#f97316", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, fontFamily: mono, marginBottom: 4 }}>Labor Reduction Impact</div>
+            <div style={{ fontSize: 11, color: "#52525b", marginBottom: 12 }}>
+              Moving labor from <span style={{ color: "#fafafa", fontFamily: mono }}>{fmtPct(inputs.laborPct)}</span> → <span style={{ color: "#22c55e", fontFamily: mono }}>{fmtPct(inputs.targetLaborPct)}</span> ({deltaPts >= 0 ? "−" : "+"}{fmtNum(Math.abs(deltaPts), 1)} pts) at current volume.
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
+              {[
+                { label: "Current Labor Cost / Day", value: fmtMoneyFull(out.dailyLaborCost),     sub: `${fmtPct(inputs.laborPct)} of daily rev.`,    color: "#f97316" },
+                { label: "Target Labor Cost / Day",  value: fmtMoneyFull(target.dailyLaborCost),  sub: `${fmtPct(inputs.targetLaborPct)} of daily rev.`, color: "#22c55e" },
+                { label: "Daily Savings",            value: fmtMoneyFull(dailySavings),           sub: `${fmtPct(deltaPts)} of daily rev.`,           color: dailySavings >= 0 ? "#22c55e" : "#ef4444", big: true },
+                { label: "Annual Savings",           value: fmtMoney(annualSavings),              sub: "× 365 days",                                  color: annualSavings >= 0 ? "#22c55e" : "#ef4444", big: true },
+                { label: "Per 1pt Reduction",        value: fmtMoney(perPointAnnualSavings),      sub: "annual savings / labor-% point",              color: "#a78bfa" },
+                { label: "Annual Gross (ex-labor)",  value: fmtMoney(target.annualGrossExLabor),  sub: `revenue − labor at ${fmtPct(inputs.targetLaborPct)}`, color: "#22c55e" },
+              ].map((c, i) => (
+                <div key={i} style={{ background: "#111114", borderRadius: 10, padding: 14, border: `1px solid ${c.color}33` }}>
+                  <div style={{ fontSize: 10, color: c.color, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, fontFamily: mono }}>{c.label}</div>
+                  <div style={{ fontSize: c.big ? 26 : 22, fontWeight: 700, fontFamily: mono, color: "#fafafa", marginTop: 6, lineHeight: 1.1 }}>{c.value}</div>
+                  <div style={{ fontSize: 10, color: "#52525b", marginTop: 4, fontFamily: mono }}>{c.sub}</div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10, marginBottom: 20 }}>
