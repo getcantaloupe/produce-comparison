@@ -549,43 +549,51 @@ function Productivity() {
   const mono = "'JetBrains Mono',monospace";
   const COLOR = "#14b8a6";
 
-  const DEFAULTS = { ordersPerDay: 10000, ordersPerHour: 50, avgDailyHours: 14, dollarsPerBox: 10 };
+  const DEFAULTS = { ordersPerDay: 10000, ordersPerHour: 50, avgDailyHours: 14, aov: 100, laborPct: 10, targetLaborPct: 8 };
 
   const [inputs, setInputs] = useState(DEFAULTS);
   const [scenarios, setScenarios] = useState([
-    { name: "Conservative", ordersPerDay: 5000,  ordersPerHour: 40, avgDailyHours: 10, dollarsPerBox: 8  },
-    { name: "Baseline",     ordersPerDay: 10000, ordersPerHour: 50, avgDailyHours: 14, dollarsPerBox: 10 },
-    { name: "Stretch",      ordersPerDay: 15000, ordersPerHour: 60, avgDailyHours: 16, dollarsPerBox: 11 },
-    { name: "Aggressive",   ordersPerDay: 25000, ordersPerHour: 75, avgDailyHours: 18, dollarsPerBox: 12 },
+    { name: "Today",        ordersPerDay: 10000, ordersPerHour: 50, avgDailyHours: 14, aov: 100, laborPct: 10 },
+    { name: "Quick win",    ordersPerDay: 10000, ordersPerHour: 55, avgDailyHours: 14, aov: 100, laborPct: 9  },
+    { name: "Target",       ordersPerDay: 10000, ordersPerHour: 60, avgDailyHours: 14, aov: 100, laborPct: 8  },
+    { name: "Stretch",      ordersPerDay: 15000, ordersPerHour: 65, avgDailyHours: 14, aov: 105, laborPct: 7  },
+    { name: "Best-in-class",ordersPerDay: 20000, ordersPerHour: 75, avgDailyHours: 16, aov: 110, laborPct: 6  },
   ]);
 
   const compute = (i) => {
     const opd = +i.ordersPerDay || 0;
     const oph = +i.ordersPerHour || 0;
     const adh = +i.avgDailyHours || 0;
-    const ppb = +i.dollarsPerBox || 0;
+    const aov = +i.aov || 0;
+    const lp  = (+i.laborPct || 0) / 100;
     const laborHoursPerDay = oph > 0 ? opd / oph : 0;
     const workersNeeded = adh > 0 ? laborHoursPerDay / adh : 0;
     const ordersPerWorkerPerDay = oph * adh;
-    const dailyCapacityPerWorker = oph * adh;
-    const dailyRevenue = opd * ppb;
+    const dailyRevenue = opd * aov;
     const weeklyRevenue = dailyRevenue * 7;
     const monthlyRevenue = dailyRevenue * 30;
     const annualRevenue = dailyRevenue * 365;
-    const weeklyOrders = opd * 7;
-    const monthlyOrders = opd * 30;
-    const annualOrders = opd * 365;
+    const dailyLaborCost = dailyRevenue * lp;
+    const annualLaborCost = annualRevenue * lp;
+    const impliedHourlyRate = laborHoursPerDay > 0 ? dailyLaborCost / laborHoursPerDay : 0;
+    const laborCostPerOrder = opd > 0 ? dailyLaborCost / opd : 0;
     const revenuePerLaborHour = laborHoursPerDay > 0 ? dailyRevenue / laborHoursPerDay : 0;
-    const revenuePerWorkerDay = workersNeeded > 0 ? dailyRevenue / workersNeeded : 0;
+    const grossExLabor = dailyRevenue - dailyLaborCost;
+    const annualGrossExLabor = annualRevenue - annualLaborCost;
     return {
-      laborHoursPerDay, workersNeeded, ordersPerWorkerPerDay, dailyCapacityPerWorker,
+      laborHoursPerDay, workersNeeded, ordersPerWorkerPerDay,
       dailyRevenue, weeklyRevenue, monthlyRevenue, annualRevenue,
-      weeklyOrders, monthlyOrders, annualOrders,
-      revenuePerLaborHour, revenuePerWorkerDay,
+      dailyLaborCost, annualLaborCost, impliedHourlyRate, laborCostPerOrder,
+      revenuePerLaborHour, grossExLabor, annualGrossExLabor,
     };
   };
 
   const out = useMemo(() => compute(inputs), [inputs]);
+  const target = useMemo(() => compute({ ...inputs, laborPct: inputs.targetLaborPct }), [inputs]);
+
+  const dailySavings = out.dailyLaborCost - target.dailyLaborCost;
+  const annualSavings = out.annualLaborCost - target.annualLaborCost;
+  const perPointAnnualSavings = (out.annualRevenue || 0) * 0.01;
 
   const fmtMoney = (v) => {
     if (v == null || !isFinite(v)) return "—";
@@ -596,12 +604,15 @@ function Productivity() {
   const fmtMoneyFull = (v) => v == null || !isFinite(v) ? "—" : "$" + Math.round(v).toLocaleString();
   const fmtNum = (v, d = 1) => v == null || !isFinite(v) ? "—" : (+v).toFixed(d);
   const fmtInt = (v) => v == null || !isFinite(v) ? "—" : Math.round(v).toLocaleString();
+  const fmtPct = (v, d = 1) => v == null || !isFinite(v) ? "—" : (+v).toFixed(d) + "%";
 
   const inputDefs = [
-    { key: "ordersPerDay",   label: "Orders / Day",   step: 100, min: 0, suffix: "orders" },
-    { key: "ordersPerHour",  label: "Orders / Hour",  step: 1,   min: 0, suffix: "orders/hr" },
-    { key: "avgDailyHours",  label: "Avg Daily Hours", step: 0.5, min: 0, max: 24, suffix: "hrs" },
-    { key: "dollarsPerBox",  label: "$ per Box",      step: 0.25, min: 0, prefix: "$" },
+    { key: "ordersPerDay",    label: "Orders / Day",        step: 100,  min: 0, suffix: "orders" },
+    { key: "ordersPerHour",   label: "Orders / Hour",       step: 1,    min: 0, suffix: "orders/hr" },
+    { key: "avgDailyHours",   label: "Avg Daily Hours",     step: 0.5,  min: 0, max: 24, suffix: "hrs" },
+    { key: "aov",             label: "AOV (avg order value)", step: 1,  min: 0, prefix: "$" },
+    { key: "laborPct",        label: "Labor % of Revenue",  step: 0.5,  min: 0, max: 100, suffix: "%" },
+    { key: "targetLaborPct",  label: "Target Labor %",      step: 0.5,  min: 0, max: 100, suffix: "%" },
   ];
 
   const updateInput = (key, v) => setInputs(p => ({ ...p, [key]: v === "" ? "" : +v }));
@@ -610,9 +621,9 @@ function Productivity() {
   const updateScenario = (idx, key, v) => {
     setScenarios(prev => prev.map((s, i) => i === idx ? { ...s, [key]: key === "name" ? v : (v === "" ? "" : +v) } : s));
   };
-  const addScenario = () => setScenarios(prev => [...prev, { name: "Scenario " + (prev.length + 1), ...DEFAULTS }]);
+  const addScenario = () => setScenarios(prev => [...prev, { name: "Scenario " + (prev.length + 1), ordersPerDay: DEFAULTS.ordersPerDay, ordersPerHour: DEFAULTS.ordersPerHour, avgDailyHours: DEFAULTS.avgDailyHours, aov: DEFAULTS.aov, laborPct: DEFAULTS.laborPct }]);
   const removeScenario = (idx) => setScenarios(prev => prev.filter((_, i) => i !== idx));
-  const loadScenario = (s) => setInputs({ ordersPerDay: s.ordersPerDay, ordersPerHour: s.ordersPerHour, avgDailyHours: s.avgDailyHours, dollarsPerBox: s.dollarsPerBox });
+  const loadScenario = (s) => setInputs(p => ({ ...p, ordersPerDay: s.ordersPerDay, ordersPerHour: s.ordersPerHour, avgDailyHours: s.avgDailyHours, aov: s.aov, laborPct: s.laborPct }));
 
   const inputStyle = {
     background: "#111114", border: "1px solid #27272a", borderRadius: 6,
@@ -621,22 +632,28 @@ function Productivity() {
   };
 
   const cards = [
-    { label: "Daily Revenue",        value: fmtMoneyFull(out.dailyRevenue),   sub: `${fmtInt(inputs.ordersPerDay)} orders × ${fmtMoney(inputs.dollarsPerBox)}`,           color: "#22c55e", big: true },
-    { label: "Annual Revenue",       value: fmtMoney(out.annualRevenue),      sub: "× 365 days",                                                                            color: "#22c55e", big: true },
-    { label: "Labor Hours / Day",    value: fmtNum(out.laborHoursPerDay, 1),  sub: `${fmtInt(inputs.ordersPerDay)} ÷ ${fmtInt(inputs.ordersPerHour)} per hour`,             color: "#a78bfa" },
-    { label: "Workers Needed",       value: fmtNum(out.workersNeeded, 2),     sub: `at ${fmtNum(inputs.avgDailyHours, 1)} hrs/day each`,                                    color: "#a78bfa" },
-    { label: "Output / Worker / Day", value: fmtInt(out.ordersPerWorkerPerDay), sub: `${fmtInt(inputs.ordersPerHour)} orders/hr × ${fmtNum(inputs.avgDailyHours, 1)} hrs`,  color: "#38bdf8" },
-    { label: "Revenue / Labor Hour", value: fmtMoneyFull(out.revenuePerLaborHour), sub: "per worker-hour of throughput",                                                    color: "#38bdf8" },
-    { label: "Weekly Revenue",       value: fmtMoney(out.weeklyRevenue),      sub: `${fmtInt(out.weeklyOrders)} orders`,                                                    color: COLOR },
-    { label: "Monthly Revenue",      value: fmtMoney(out.monthlyRevenue),     sub: `${fmtInt(out.monthlyOrders)} orders`,                                                   color: COLOR },
+    { label: "Daily Revenue",         value: fmtMoneyFull(out.dailyRevenue),     sub: `${fmtInt(inputs.ordersPerDay)} orders × ${fmtMoney(inputs.aov)} AOV`,             color: "#22c55e", big: true },
+    { label: "Annual Revenue",        value: fmtMoney(out.annualRevenue),        sub: "× 365 days",                                                                       color: "#22c55e", big: true },
+    { label: "Daily Labor Cost",      value: fmtMoneyFull(out.dailyLaborCost),   sub: `${fmtPct(inputs.laborPct)} of revenue`,                                            color: "#f97316" },
+    { label: "Annual Labor Cost",     value: fmtMoney(out.annualLaborCost),      sub: `${fmtPct(inputs.laborPct)} × annual rev.`,                                         color: "#f97316" },
+    { label: "Implied Hourly Rate",   value: fmtMoneyFull(out.impliedHourlyRate),sub: `${fmtMoneyFull(out.dailyLaborCost)} ÷ ${fmtNum(out.laborHoursPerDay, 1)} hrs`,     color: "#f97316" },
+    { label: "Labor $ / Order",       value: fmtMoney(out.laborCostPerOrder),    sub: "fully-loaded fulfillment cost",                                                    color: "#f97316" },
+    { label: "Labor Hours / Day",     value: fmtNum(out.laborHoursPerDay, 1),    sub: `${fmtInt(inputs.ordersPerDay)} ÷ ${fmtInt(inputs.ordersPerHour)} per hour`,        color: "#a78bfa" },
+    { label: "Workers Needed",        value: fmtNum(out.workersNeeded, 2),       sub: `at ${fmtNum(inputs.avgDailyHours, 1)} hrs/day each`,                               color: "#a78bfa" },
+    { label: "Output / Worker / Day", value: fmtInt(out.ordersPerWorkerPerDay),  sub: `${fmtInt(inputs.ordersPerHour)} × ${fmtNum(inputs.avgDailyHours, 1)} hrs`,         color: "#38bdf8" },
+    { label: "Revenue / Labor Hour",  value: fmtMoneyFull(out.revenuePerLaborHour), sub: "throughput density",                                                            color: "#38bdf8" },
+    { label: "Weekly Revenue",        value: fmtMoney(out.weeklyRevenue),        sub: `${fmtInt(out.dailyRevenue ? out.dailyRevenue / inputs.aov * 7 : 0)} orders`,        color: COLOR },
+    { label: "Monthly Revenue",       value: fmtMoney(out.monthlyRevenue),       sub: `${fmtInt(inputs.ordersPerDay * 30)} orders`,                                       color: COLOR },
   ];
+
+  const deltaPts = (+inputs.laborPct || 0) - (+inputs.targetLaborPct || 0);
 
   return (
     <div style={{ padding: "16px 24px" }}>
       <div style={{ marginBottom: 10 }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: "#fafafa" }}>Productivity Calculator</div>
         <div style={{ fontSize: 11, color: "#52525b", marginTop: 2 }}>
-          Adjust the inputs to model throughput, labor, and revenue. Use scenarios below to compare side-by-side.
+          Goal: drive labor down as a % of revenue. Adjust inputs to see throughput, cost, and the dollar impact of reducing labor %.
         </div>
       </div>
 
@@ -670,6 +687,29 @@ function Productivity() {
         </div>
       </div>
 
+      <div style={{ background: "#0c0c0f", border: "1px solid #f9731644", borderRadius: 10, padding: 16, marginBottom: 16 }}>
+        <div style={{ fontSize: 10, color: "#f97316", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, fontFamily: mono, marginBottom: 4 }}>Labor Reduction Impact</div>
+        <div style={{ fontSize: 11, color: "#52525b", marginBottom: 12 }}>
+          Moving labor from <span style={{ color: "#fafafa", fontFamily: mono }}>{fmtPct(inputs.laborPct)}</span> → <span style={{ color: "#22c55e", fontFamily: mono }}>{fmtPct(inputs.targetLaborPct)}</span> ({deltaPts >= 0 ? "−" : "+"}{fmtNum(Math.abs(deltaPts), 1)} pts) at current volume.
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
+          {[
+            { label: "Current Labor Cost / Day", value: fmtMoneyFull(out.dailyLaborCost),     sub: `${fmtPct(inputs.laborPct)} of daily rev.`,    color: "#f97316" },
+            { label: "Target Labor Cost / Day",  value: fmtMoneyFull(target.dailyLaborCost),  sub: `${fmtPct(inputs.targetLaborPct)} of daily rev.`, color: "#22c55e" },
+            { label: "Daily Savings",            value: fmtMoneyFull(dailySavings),           sub: `${fmtPct(deltaPts)} of daily rev.`,           color: dailySavings >= 0 ? "#22c55e" : "#ef4444", big: true },
+            { label: "Annual Savings",           value: fmtMoney(annualSavings),              sub: "× 365 days",                                  color: annualSavings >= 0 ? "#22c55e" : "#ef4444", big: true },
+            { label: "Per 1pt Reduction",        value: fmtMoney(perPointAnnualSavings),      sub: "annual savings / labor-% point",              color: "#a78bfa" },
+            { label: "Annual Gross (ex-labor)",  value: fmtMoney(target.annualGrossExLabor),  sub: `revenue − labor at ${fmtPct(inputs.targetLaborPct)}`, color: "#22c55e" },
+          ].map((c, i) => (
+            <div key={i} style={{ background: "#111114", borderRadius: 10, padding: 14, border: `1px solid ${c.color}33` }}>
+              <div style={{ fontSize: 10, color: c.color, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, fontFamily: mono }}>{c.label}</div>
+              <div style={{ fontSize: c.big ? 26 : 22, fontWeight: 700, fontFamily: mono, color: "#fafafa", marginTop: 6, lineHeight: 1.1 }}>{c.value}</div>
+              <div style={{ fontSize: 10, color: "#52525b", marginTop: 4, fontFamily: mono }}>{c.sub}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10, marginBottom: 20 }}>
         {cards.map((c, i) => (
           <div key={i} style={{
@@ -696,10 +736,10 @@ function Productivity() {
         </div>
 
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, minWidth: 900 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, minWidth: 1000 }}>
             <thead>
               <tr>
-                {["Scenario", "Orders/Day", "Orders/Hour", "Hrs/Day", "$/Box", "Daily Rev.", "Annual Rev.", "Labor Hrs/Day", "Workers", "Output/Worker", ""].map((h, i) => (
+                {["Scenario", "Orders/Day", "Orders/Hour", "Hrs/Day", "AOV", "Labor %", "Daily Rev.", "Annual Rev.", "Annual Labor $", "Workers", ""].map((h, i) => (
                   <th key={i} style={{
                     textAlign: i === 0 ? "left" : i === 10 ? "center" : "right",
                     padding: "8px 8px", color: "#52525b", fontWeight: 600, fontSize: 9,
@@ -738,12 +778,12 @@ function Productivity() {
                     <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22" }}>{cellInput("ordersPerDay", 100)}</td>
                     <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22" }}>{cellInput("ordersPerHour", 1)}</td>
                     <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22" }}>{cellInput("avgDailyHours", 0.5)}</td>
-                    <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22" }}>{cellInput("dollarsPerBox", 0.25)}</td>
+                    <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22" }}>{cellInput("aov", 1)}</td>
+                    <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22" }}>{cellInput("laborPct", 0.5)}</td>
                     <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: "#22c55e", fontWeight: 600 }}>{fmtMoney(r.dailyRevenue)}</td>
                     <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: "#22c55e", fontWeight: 600 }}>{fmtMoney(r.annualRevenue)}</td>
-                    <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: "#a78bfa" }}>{fmtNum(r.laborHoursPerDay, 1)}</td>
+                    <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: "#f97316", fontWeight: 600 }}>{fmtMoney(r.annualLaborCost)}</td>
                     <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: "#a78bfa" }}>{fmtNum(r.workersNeeded, 2)}</td>
-                    <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: "#38bdf8" }}>{fmtInt(r.ordersPerWorkerPerDay)}</td>
                     <td style={{ padding: "4px 8px", textAlign: "center", borderBottom: "1px solid #1c1c22" }}>
                       <button onClick={(e) => { e.stopPropagation(); removeScenario(i); }} style={{
                         background: "transparent", border: "1px solid #27272a", color: "#71717a",
@@ -760,10 +800,11 @@ function Productivity() {
 
       <div style={{ background: "#0c0c0f", borderRadius: 8, padding: 12, border: "1px solid #1c1c22", fontSize: 10, color: "#71717a", lineHeight: 1.8, fontFamily: mono }}>
         <div style={{ color: "#a1a1aa", fontWeight: 700, marginBottom: 4 }}>Formulas</div>
+        <div>Daily Revenue = Orders/Day × AOV · Annual = Daily × 365</div>
+        <div>Labor Cost = Revenue × Labor %  ·  Savings = (Labor % − Target %) × Revenue</div>
         <div>Labor Hours/Day = Orders/Day ÷ Orders/Hour</div>
-        <div>Workers Needed = (Orders/Day ÷ Orders/Hour) ÷ Avg Daily Hours</div>
-        <div>Output / Worker / Day = Orders/Hour × Avg Daily Hours</div>
-        <div>Daily Revenue = Orders/Day × $ per Box · Annual = Daily × 365</div>
+        <div>Workers Needed = Labor Hours/Day ÷ Avg Daily Hours</div>
+        <div>Implied Hourly Rate = Daily Labor Cost ÷ Labor Hours/Day</div>
       </div>
     </div>
   );
