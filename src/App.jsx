@@ -643,9 +643,13 @@ function Productivity() {
   const updateScenario = (idx, key, v) => {
     setScenarios(prev => prev.map((s, i) => i === idx ? { ...s, [key]: key === "name" ? v : (v === "" ? "" : +v) } : s));
   };
+  const fillColumn = (key, value) => {
+    setScenarios(prev => prev.map(s => ({ ...s, [key]: value })));
+  };
   const addScenario = () => setScenarios(prev => [...prev, { name: "Scenario " + (prev.length + 1), ordersPerDay: DEFAULTS.ordersPerDay, ordersPerHour: DEFAULTS.ordersPerHour, avgDailyHours: DEFAULTS.avgDailyHours, aov: DEFAULTS.aov, laborPct: DEFAULTS.laborPct }]);
   const removeScenario = (idx) => setScenarios(prev => prev.filter((_, i) => i !== idx));
   const loadScenario = (s) => setInputs(p => ({ ...p, ordersPerDay: s.ordersPerDay, ordersPerHour: s.ordersPerHour, avgDailyHours: s.avgDailyHours, aov: s.aov, laborPct: s.laborPct }));
+  const [focusedCell, setFocusedCell] = useState(null);
 
   const inputStyle = {
     background: "#111114", border: "1px solid #27272a", borderRadius: 6,
@@ -835,24 +839,46 @@ function Productivity() {
                   const diffAnnual = r.annualLaborCost - defaultRow.annualLaborCost;
                   const diffColor = Math.abs(diffAnnual) < 0.5 ? "#52525b" : diffAnnual < 0 ? "#22c55e" : "#ef4444";
                   const diffSign = diffAnnual > 0 ? "+" : diffAnnual < 0 ? "−" : "";
-                  const cellInput = (key, step = 1) => (
-                    <input
-                      type={key === "name" ? "text" : "number"}
-                      value={s[key]}
-                      step={step}
-                      onChange={(e) => updateScenario(i, key, e.target.value)}
-                      onClick={(e) => e.stopPropagation()}
-                      style={{
-                        background: "transparent", border: "1px solid transparent",
-                        borderRadius: 4, padding: "4px 6px", color: "#fafafa",
-                        fontSize: 11, fontFamily: key === "name" ? "inherit" : mono,
-                        width: key === "name" ? 130 : 90, textAlign: key === "name" ? "left" : "right",
-                        outline: "none",
-                      }}
-                      onFocus={(e) => { e.currentTarget.style.background = "#1c1c22"; e.currentTarget.style.borderColor = "#3f3f46"; }}
-                      onBlur={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; }}
-                    />
-                  );
+                  const cellInput = (key, step = 1) => {
+                    const isFocused = focusedCell && focusedCell.row === i && focusedCell.key === key;
+                    const canFill = key !== "name";
+                    return (
+                      <span style={{ position: "relative", display: "inline-block" }}>
+                        <input
+                          type={key === "name" ? "text" : "number"}
+                          value={s[key]}
+                          step={step}
+                          onChange={(e) => updateScenario(i, key, e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
+                          style={{
+                            background: isFocused ? "#1c1c22" : "transparent",
+                            border: `1px solid ${isFocused ? "#3f3f46" : "transparent"}`,
+                            borderRadius: 4, padding: "4px 6px", color: "#fafafa",
+                            fontSize: 11, fontFamily: key === "name" ? "inherit" : mono,
+                            width: key === "name" ? 130 : 90, textAlign: key === "name" ? "left" : "right",
+                            outline: "none",
+                          }}
+                          onFocus={() => setFocusedCell({ row: i, key })}
+                          onBlur={() => setFocusedCell(prev => (prev && prev.row === i && prev.key === key) ? null : prev)}
+                        />
+                        {isFocused && canFill && (
+                          <button
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={(e) => { e.stopPropagation(); fillColumn(key, +s[key] || 0); }}
+                            title="Apply this value to every row in this column"
+                            style={{
+                              position: "absolute", top: -22, right: 0,
+                              background: "#14b8a6", color: "#0c0c0f",
+                              border: "1px solid #14b8a6", borderRadius: 4,
+                              padding: "2px 6px", fontSize: 9, fontFamily: mono,
+                              fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
+                              boxShadow: "0 2px 6px rgba(0,0,0,0.4)", zIndex: 2,
+                            }}
+                          >Fill column ↕</button>
+                        )}
+                      </span>
+                    );
+                  };
                   return (
                     <tr key={i} onClick={() => loadScenario(s)} style={{ cursor: "pointer", background: i % 2 === 0 ? "#0c0c0f" : "transparent" }}
                       onMouseEnter={(e) => e.currentTarget.style.background = "#14141a"}
