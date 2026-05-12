@@ -810,65 +810,81 @@ function Productivity() {
         </div>
 
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, minWidth: 1000 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, minWidth: 1200 }}>
             <thead>
               <tr>
-                {["Scenario", "Orders/Day", "Orders/Hour", "Hrs/Day", "AOV", "Labor %", "Daily Rev.", "Annual Rev.", "Annual Labor $", "Workers", ""].map((h, i) => (
-                  <th key={i} style={{
-                    textAlign: i === 0 ? "left" : i === 10 ? "center" : "right",
-                    padding: "8px 8px", color: "#52525b", fontWeight: 600, fontSize: 9,
-                    textTransform: "uppercase", letterSpacing: 0.8, borderBottom: "1px solid #1c1c22",
-                    fontFamily: mono, whiteSpace: "nowrap",
-                  }}>{h}</th>
-                ))}
+                {(() => {
+                  const headers = ["Scenario", "Orders/Day", "Orders/Hour", "Hrs/Day", "AOV", "Labor %", "Daily Rev.", "Annual Rev.", "Daily Labor $", "Weekly Labor $", "Annual Labor $", "Δ Annual vs Default", "Workers", ""];
+                  return headers.map((h, i) => (
+                    <th key={i} style={{
+                      textAlign: i === 0 ? "left" : i === headers.length - 1 ? "center" : "right",
+                      padding: "8px 8px", color: i === 11 ? "#a78bfa" : "#52525b", fontWeight: 600, fontSize: 9,
+                      textTransform: "uppercase", letterSpacing: 0.8, borderBottom: "1px solid #1c1c22",
+                      fontFamily: mono, whiteSpace: "nowrap",
+                    }}>{h}</th>
+                  ));
+                })()}
               </tr>
             </thead>
             <tbody>
-              {scenarios.map((s, i) => {
-                const r = compute(s);
-                const cellInput = (key, step = 1) => (
-                  <input
-                    type={key === "name" ? "text" : "number"}
-                    value={s[key]}
-                    step={step}
-                    onChange={(e) => updateScenario(i, key, e.target.value)}
-                    onClick={(e) => e.stopPropagation()}
-                    style={{
-                      background: "transparent", border: "1px solid transparent",
-                      borderRadius: 4, padding: "4px 6px", color: "#fafafa",
-                      fontSize: 11, fontFamily: key === "name" ? "inherit" : mono,
-                      width: key === "name" ? 130 : 90, textAlign: key === "name" ? "left" : "right",
-                      outline: "none",
-                    }}
-                    onFocus={(e) => { e.currentTarget.style.background = "#1c1c22"; e.currentTarget.style.borderColor = "#3f3f46"; }}
-                    onBlur={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; }}
-                  />
-                );
-                return (
-                  <tr key={i} onClick={() => loadScenario(s)} style={{ cursor: "pointer", background: i % 2 === 0 ? "#0c0c0f" : "transparent" }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = "#14141a"}
-                    onMouseLeave={(e) => e.currentTarget.style.background = i % 2 === 0 ? "#0c0c0f" : "transparent"}>
-                    <td style={{ padding: "4px 8px", borderBottom: "1px solid #1c1c22" }}>{cellInput("name")}</td>
-                    <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22" }}>{cellInput("ordersPerDay", 100)}</td>
-                    <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22" }}>{cellInput("ordersPerHour", 1)}</td>
-                    <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22" }}>{cellInput("avgDailyHours", 0.5)}</td>
-                    <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22" }}>{cellInput("aov", 1)}</td>
-                    <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22" }}>{cellInput("laborPct", 0.5)}</td>
-                    <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: "#22c55e", fontWeight: 600 }}>{fmtMoney(r.dailyRevenue)}</td>
-                    <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: "#22c55e", fontWeight: 600 }}>{fmtMoney(r.annualRevenue)}</td>
-                    <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: "#f97316", fontWeight: 600 }}>{fmtMoney(r.annualLaborCost)}</td>
-                    <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: "#a78bfa" }}>{fmtNum(r.workersNeeded, 2)}</td>
-                    <td style={{ padding: "4px 8px", textAlign: "center", borderBottom: "1px solid #1c1c22" }}>
-                      <button onClick={(e) => { e.stopPropagation(); removeScenario(i); }} style={{
-                        background: "transparent", border: "1px solid #27272a", color: "#71717a",
-                        borderRadius: 4, padding: "2px 8px", fontSize: 11, cursor: "pointer", fontFamily: mono,
-                      }} title="Remove scenario">×</button>
-                    </td>
-                  </tr>
-                );
-              })}
+              {(() => {
+                const defaultRow = compute(DEFAULTS);
+                return scenarios.map((s, i) => {
+                  const r = compute(s);
+                  const weeklyLabor = r.dailyLaborCost * 7;
+                  const diffAnnual = r.annualLaborCost - defaultRow.annualLaborCost;
+                  const diffColor = Math.abs(diffAnnual) < 0.5 ? "#52525b" : diffAnnual < 0 ? "#22c55e" : "#ef4444";
+                  const diffSign = diffAnnual > 0 ? "+" : diffAnnual < 0 ? "−" : "";
+                  const cellInput = (key, step = 1) => (
+                    <input
+                      type={key === "name" ? "text" : "number"}
+                      value={s[key]}
+                      step={step}
+                      onChange={(e) => updateScenario(i, key, e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        background: "transparent", border: "1px solid transparent",
+                        borderRadius: 4, padding: "4px 6px", color: "#fafafa",
+                        fontSize: 11, fontFamily: key === "name" ? "inherit" : mono,
+                        width: key === "name" ? 130 : 90, textAlign: key === "name" ? "left" : "right",
+                        outline: "none",
+                      }}
+                      onFocus={(e) => { e.currentTarget.style.background = "#1c1c22"; e.currentTarget.style.borderColor = "#3f3f46"; }}
+                      onBlur={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; }}
+                    />
+                  );
+                  return (
+                    <tr key={i} onClick={() => loadScenario(s)} style={{ cursor: "pointer", background: i % 2 === 0 ? "#0c0c0f" : "transparent" }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = "#14141a"}
+                      onMouseLeave={(e) => e.currentTarget.style.background = i % 2 === 0 ? "#0c0c0f" : "transparent"}>
+                      <td style={{ padding: "4px 8px", borderBottom: "1px solid #1c1c22" }}>{cellInput("name")}</td>
+                      <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22" }}>{cellInput("ordersPerDay", 100)}</td>
+                      <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22" }}>{cellInput("ordersPerHour", 1)}</td>
+                      <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22" }}>{cellInput("avgDailyHours", 0.5)}</td>
+                      <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22" }}>{cellInput("aov", 1)}</td>
+                      <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22" }}>{cellInput("laborPct", 0.5)}</td>
+                      <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: "#22c55e", fontWeight: 600 }}>{fmtMoney(r.dailyRevenue)}</td>
+                      <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: "#22c55e", fontWeight: 600 }}>{fmtMoney(r.annualRevenue)}</td>
+                      <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: "#f97316", fontWeight: 600 }}>{fmtMoney(r.dailyLaborCost)}</td>
+                      <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: "#f97316", fontWeight: 600 }}>{fmtMoney(weeklyLabor)}</td>
+                      <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: "#f97316", fontWeight: 600 }}>{fmtMoney(r.annualLaborCost)}</td>
+                      <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: diffColor, fontWeight: 700 }}>{diffSign}{fmtMoney(Math.abs(diffAnnual))}</td>
+                      <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: "#a78bfa" }}>{fmtNum(r.workersNeeded, 2)}</td>
+                      <td style={{ padding: "4px 8px", textAlign: "center", borderBottom: "1px solid #1c1c22" }}>
+                        <button onClick={(e) => { e.stopPropagation(); removeScenario(i); }} style={{
+                          background: "transparent", border: "1px solid #27272a", color: "#71717a",
+                          borderRadius: 4, padding: "2px 8px", fontSize: 11, cursor: "pointer", fontFamily: mono,
+                        }} title="Remove scenario">×</button>
+                      </td>
+                    </tr>
+                  );
+                });
+              })()}
             </tbody>
           </table>
+        </div>
+        <div style={{ fontSize: 10, color: "#3f3f46", marginTop: 8, fontFamily: mono }}>
+          Δ Annual vs Default compares each scenario's annual labor $ against the defaults ({fmtInt(DEFAULTS.ordersPerDay)} orders/day · {fmtInt(DEFAULTS.ordersPerHour)} orders/hr · {fmtNum(DEFAULTS.avgDailyHours,1)} hrs · ${DEFAULTS.aov} AOV · {fmtPct(DEFAULTS.laborPct,0)} labor). Green = saves vs default · Red = costs more.
         </div>
       </div>
 
