@@ -545,6 +545,230 @@ function ExecSummary({ stats }) {
   );
 }
 
+function Productivity() {
+  const mono = "'JetBrains Mono',monospace";
+  const COLOR = "#14b8a6";
+
+  const DEFAULTS = { ordersPerDay: 10000, ordersPerHour: 50, avgDailyHours: 14, dollarsPerBox: 10 };
+
+  const [inputs, setInputs] = useState(DEFAULTS);
+  const [scenarios, setScenarios] = useState([
+    { name: "Conservative", ordersPerDay: 5000,  ordersPerHour: 40, avgDailyHours: 10, dollarsPerBox: 8  },
+    { name: "Baseline",     ordersPerDay: 10000, ordersPerHour: 50, avgDailyHours: 14, dollarsPerBox: 10 },
+    { name: "Stretch",      ordersPerDay: 15000, ordersPerHour: 60, avgDailyHours: 16, dollarsPerBox: 11 },
+    { name: "Aggressive",   ordersPerDay: 25000, ordersPerHour: 75, avgDailyHours: 18, dollarsPerBox: 12 },
+  ]);
+
+  const compute = (i) => {
+    const opd = +i.ordersPerDay || 0;
+    const oph = +i.ordersPerHour || 0;
+    const adh = +i.avgDailyHours || 0;
+    const ppb = +i.dollarsPerBox || 0;
+    const laborHoursPerDay = oph > 0 ? opd / oph : 0;
+    const workersNeeded = adh > 0 ? laborHoursPerDay / adh : 0;
+    const ordersPerWorkerPerDay = oph * adh;
+    const dailyCapacityPerWorker = oph * adh;
+    const dailyRevenue = opd * ppb;
+    const weeklyRevenue = dailyRevenue * 7;
+    const monthlyRevenue = dailyRevenue * 30;
+    const annualRevenue = dailyRevenue * 365;
+    const weeklyOrders = opd * 7;
+    const monthlyOrders = opd * 30;
+    const annualOrders = opd * 365;
+    const revenuePerLaborHour = laborHoursPerDay > 0 ? dailyRevenue / laborHoursPerDay : 0;
+    const revenuePerWorkerDay = workersNeeded > 0 ? dailyRevenue / workersNeeded : 0;
+    return {
+      laborHoursPerDay, workersNeeded, ordersPerWorkerPerDay, dailyCapacityPerWorker,
+      dailyRevenue, weeklyRevenue, monthlyRevenue, annualRevenue,
+      weeklyOrders, monthlyOrders, annualOrders,
+      revenuePerLaborHour, revenuePerWorkerDay,
+    };
+  };
+
+  const out = useMemo(() => compute(inputs), [inputs]);
+
+  const fmtMoney = (v) => {
+    if (v == null || !isFinite(v)) return "—";
+    if (Math.abs(v) >= 1_000_000) return "$" + (v / 1_000_000).toFixed(2) + "M";
+    if (Math.abs(v) >= 1_000) return "$" + (v / 1_000).toFixed(1) + "K";
+    return "$" + v.toFixed(2);
+  };
+  const fmtMoneyFull = (v) => v == null || !isFinite(v) ? "—" : "$" + Math.round(v).toLocaleString();
+  const fmtNum = (v, d = 1) => v == null || !isFinite(v) ? "—" : (+v).toFixed(d);
+  const fmtInt = (v) => v == null || !isFinite(v) ? "—" : Math.round(v).toLocaleString();
+
+  const inputDefs = [
+    { key: "ordersPerDay",   label: "Orders / Day",   step: 100, min: 0, suffix: "orders" },
+    { key: "ordersPerHour",  label: "Orders / Hour",  step: 1,   min: 0, suffix: "orders/hr" },
+    { key: "avgDailyHours",  label: "Avg Daily Hours", step: 0.5, min: 0, max: 24, suffix: "hrs" },
+    { key: "dollarsPerBox",  label: "$ per Box",      step: 0.25, min: 0, prefix: "$" },
+  ];
+
+  const updateInput = (key, v) => setInputs(p => ({ ...p, [key]: v === "" ? "" : +v }));
+  const resetInputs = () => setInputs(DEFAULTS);
+
+  const updateScenario = (idx, key, v) => {
+    setScenarios(prev => prev.map((s, i) => i === idx ? { ...s, [key]: key === "name" ? v : (v === "" ? "" : +v) } : s));
+  };
+  const addScenario = () => setScenarios(prev => [...prev, { name: "Scenario " + (prev.length + 1), ...DEFAULTS }]);
+  const removeScenario = (idx) => setScenarios(prev => prev.filter((_, i) => i !== idx));
+  const loadScenario = (s) => setInputs({ ordersPerDay: s.ordersPerDay, ordersPerHour: s.ordersPerHour, avgDailyHours: s.avgDailyHours, dollarsPerBox: s.dollarsPerBox });
+
+  const inputStyle = {
+    background: "#111114", border: "1px solid #27272a", borderRadius: 6,
+    padding: "8px 10px", color: "#fafafa", fontSize: 14, fontFamily: mono,
+    width: "100%", outline: "none", boxSizing: "border-box",
+  };
+
+  const cards = [
+    { label: "Daily Revenue",        value: fmtMoneyFull(out.dailyRevenue),   sub: `${fmtInt(inputs.ordersPerDay)} orders × ${fmtMoney(inputs.dollarsPerBox)}`,           color: "#22c55e", big: true },
+    { label: "Annual Revenue",       value: fmtMoney(out.annualRevenue),      sub: "× 365 days",                                                                            color: "#22c55e", big: true },
+    { label: "Labor Hours / Day",    value: fmtNum(out.laborHoursPerDay, 1),  sub: `${fmtInt(inputs.ordersPerDay)} ÷ ${fmtInt(inputs.ordersPerHour)} per hour`,             color: "#a78bfa" },
+    { label: "Workers Needed",       value: fmtNum(out.workersNeeded, 2),     sub: `at ${fmtNum(inputs.avgDailyHours, 1)} hrs/day each`,                                    color: "#a78bfa" },
+    { label: "Output / Worker / Day", value: fmtInt(out.ordersPerWorkerPerDay), sub: `${fmtInt(inputs.ordersPerHour)} orders/hr × ${fmtNum(inputs.avgDailyHours, 1)} hrs`,  color: "#38bdf8" },
+    { label: "Revenue / Labor Hour", value: fmtMoneyFull(out.revenuePerLaborHour), sub: "per worker-hour of throughput",                                                    color: "#38bdf8" },
+    { label: "Weekly Revenue",       value: fmtMoney(out.weeklyRevenue),      sub: `${fmtInt(out.weeklyOrders)} orders`,                                                    color: COLOR },
+    { label: "Monthly Revenue",      value: fmtMoney(out.monthlyRevenue),     sub: `${fmtInt(out.monthlyOrders)} orders`,                                                   color: COLOR },
+  ];
+
+  return (
+    <div style={{ padding: "16px 24px" }}>
+      <div style={{ marginBottom: 10 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: "#fafafa" }}>Productivity Calculator</div>
+        <div style={{ fontSize: 11, color: "#52525b", marginTop: 2 }}>
+          Adjust the inputs to model throughput, labor, and revenue. Use scenarios below to compare side-by-side.
+        </div>
+      </div>
+
+      <div style={{ background: "#0c0c0f", border: "1px solid #1c1c22", borderRadius: 10, padding: 16, marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
+          <div style={{ fontSize: 10, color: COLOR, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, fontFamily: mono }}>Inputs</div>
+          <button onClick={resetInputs} style={{
+            background: "transparent", border: "1px solid #27272a", color: "#a1a1aa",
+            borderRadius: 6, padding: "4px 10px", fontSize: 10, cursor: "pointer", fontFamily: mono,
+          }}>Reset to defaults</button>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+          {inputDefs.map(d => (
+            <label key={d.key} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <span style={{ fontSize: 10, color: "#71717a", textTransform: "uppercase", letterSpacing: 1, fontFamily: mono }}>{d.label}</span>
+              <div style={{ position: "relative" }}>
+                {d.prefix && <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#52525b", fontSize: 13, fontFamily: mono, pointerEvents: "none" }}>{d.prefix}</span>}
+                <input
+                  type="number"
+                  value={inputs[d.key]}
+                  min={d.min}
+                  max={d.max}
+                  step={d.step}
+                  onChange={(e) => updateInput(d.key, e.target.value)}
+                  style={{ ...inputStyle, paddingLeft: d.prefix ? 22 : 10 }}
+                />
+                {d.suffix && <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "#3f3f46", fontSize: 10, fontFamily: mono, pointerEvents: "none" }}>{d.suffix}</span>}
+              </div>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10, marginBottom: 20 }}>
+        {cards.map((c, i) => (
+          <div key={i} style={{
+            background: "#111114", borderRadius: 10, padding: 14,
+            border: `1px solid ${c.color}33`, position: "relative", overflow: "hidden",
+          }}>
+            <div style={{ fontSize: 10, color: c.color, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, fontFamily: mono }}>{c.label}</div>
+            <div style={{ fontSize: c.big ? 28 : 24, fontWeight: 700, fontFamily: mono, color: "#fafafa", marginTop: 6, lineHeight: 1.1 }}>{c.value}</div>
+            <div style={{ fontSize: 10, color: "#52525b", marginTop: 4, fontFamily: mono }}>{c.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ background: "#0c0c0f", border: "1px solid #1c1c22", borderRadius: 10, padding: 16, marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
+          <div>
+            <div style={{ fontSize: 10, color: COLOR, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, fontFamily: mono }}>Scenario Comparison</div>
+            <div style={{ fontSize: 10, color: "#52525b", marginTop: 2 }}>Edit any cell. Click a row to load it into the calculator above.</div>
+          </div>
+          <button onClick={addScenario} style={{
+            background: COLOR + "22", border: `1px solid ${COLOR}66`, color: COLOR,
+            borderRadius: 6, padding: "5px 12px", fontSize: 11, cursor: "pointer", fontFamily: mono, fontWeight: 600,
+          }}>+ Add scenario</button>
+        </div>
+
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, minWidth: 900 }}>
+            <thead>
+              <tr>
+                {["Scenario", "Orders/Day", "Orders/Hour", "Hrs/Day", "$/Box", "Daily Rev.", "Annual Rev.", "Labor Hrs/Day", "Workers", "Output/Worker", ""].map((h, i) => (
+                  <th key={i} style={{
+                    textAlign: i === 0 ? "left" : i === 10 ? "center" : "right",
+                    padding: "8px 8px", color: "#52525b", fontWeight: 600, fontSize: 9,
+                    textTransform: "uppercase", letterSpacing: 0.8, borderBottom: "1px solid #1c1c22",
+                    fontFamily: mono, whiteSpace: "nowrap",
+                  }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {scenarios.map((s, i) => {
+                const r = compute(s);
+                const cellInput = (key, step = 1) => (
+                  <input
+                    type={key === "name" ? "text" : "number"}
+                    value={s[key]}
+                    step={step}
+                    onChange={(e) => updateScenario(i, key, e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                      background: "transparent", border: "1px solid transparent",
+                      borderRadius: 4, padding: "4px 6px", color: "#fafafa",
+                      fontSize: 11, fontFamily: key === "name" ? "inherit" : mono,
+                      width: key === "name" ? 130 : 90, textAlign: key === "name" ? "left" : "right",
+                      outline: "none",
+                    }}
+                    onFocus={(e) => { e.currentTarget.style.background = "#1c1c22"; e.currentTarget.style.borderColor = "#3f3f46"; }}
+                    onBlur={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; }}
+                  />
+                );
+                return (
+                  <tr key={i} onClick={() => loadScenario(s)} style={{ cursor: "pointer", background: i % 2 === 0 ? "#0c0c0f" : "transparent" }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = "#14141a"}
+                    onMouseLeave={(e) => e.currentTarget.style.background = i % 2 === 0 ? "#0c0c0f" : "transparent"}>
+                    <td style={{ padding: "4px 8px", borderBottom: "1px solid #1c1c22" }}>{cellInput("name")}</td>
+                    <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22" }}>{cellInput("ordersPerDay", 100)}</td>
+                    <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22" }}>{cellInput("ordersPerHour", 1)}</td>
+                    <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22" }}>{cellInput("avgDailyHours", 0.5)}</td>
+                    <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22" }}>{cellInput("dollarsPerBox", 0.25)}</td>
+                    <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: "#22c55e", fontWeight: 600 }}>{fmtMoney(r.dailyRevenue)}</td>
+                    <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: "#22c55e", fontWeight: 600 }}>{fmtMoney(r.annualRevenue)}</td>
+                    <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: "#a78bfa" }}>{fmtNum(r.laborHoursPerDay, 1)}</td>
+                    <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: "#a78bfa" }}>{fmtNum(r.workersNeeded, 2)}</td>
+                    <td style={{ padding: "4px 8px", textAlign: "right", borderBottom: "1px solid #1c1c22", fontFamily: mono, color: "#38bdf8" }}>{fmtInt(r.ordersPerWorkerPerDay)}</td>
+                    <td style={{ padding: "4px 8px", textAlign: "center", borderBottom: "1px solid #1c1c22" }}>
+                      <button onClick={(e) => { e.stopPropagation(); removeScenario(i); }} style={{
+                        background: "transparent", border: "1px solid #27272a", color: "#71717a",
+                        borderRadius: 4, padding: "2px 8px", fontSize: 11, cursor: "pointer", fontFamily: mono,
+                      }} title="Remove scenario">×</button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div style={{ background: "#0c0c0f", borderRadius: 8, padding: 12, border: "1px solid #1c1c22", fontSize: 10, color: "#71717a", lineHeight: 1.8, fontFamily: mono }}>
+        <div style={{ color: "#a1a1aa", fontWeight: 700, marginBottom: 4 }}>Formulas</div>
+        <div>Labor Hours/Day = Orders/Day ÷ Orders/Hour</div>
+        <div>Workers Needed = (Orders/Day ÷ Orders/Hour) ÷ Avg Daily Hours</div>
+        <div>Output / Worker / Day = Orders/Hour × Avg Daily Hours</div>
+        <div>Daily Revenue = Orders/Day × $ per Box · Annual = Daily × 365</div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [tab, setTab] = useState("summary");
   const [search, setSearch] = useState("");
@@ -607,6 +831,7 @@ export default function App() {
           {[
             {id:"summary",label:"Summary",color:"#a78bfa"},
             {id:"basket",label:"Basket Cost",color:"#ec4899"},
+            {id:"productivity",label:"Productivity",color:"#14b8a6"},
             {id:"compare",label:"Comparison",count:DATA.length},
             {id:"psfc",label:"PSFC",count:PSFC.length,color:RC.PSFC},
             {id:"ftp",label:"FTP",count:FTP.length,color:RC.FTP},
@@ -755,6 +980,7 @@ export default function App() {
       </>}
       {tab === "summary" && <ExecSummary stats={stats} />}
       {tab === "basket" && <BasketCost />}
+      {tab === "productivity" && <Productivity />}
       {tab === "psfc" && <RetailerList data={PSFC} search={search} color={RC.PSFC} name={`Park Slope Food Coop — ${PSFC.length} items · Daily Price List March 27, 2026`} />}
       {tab === "ftp" && <RetailerList data={FTP} search={search} color={RC.FTP} name={`Farm to People — ${FTP.length} items · Logged-in prices March 27, 2026`} />}
       {tab === "fd" && <RetailerList data={FD} search={search} color={RC.FD} name={`FreshDirect — ${FD.length} items · Search prices March 28, 2026`} />}
