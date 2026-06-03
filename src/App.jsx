@@ -547,7 +547,7 @@ function ExecSummary({ stats }) {
 
 function ProcessMap() {
   return (
-    <div style={{ background: "#FAFAF9", height: "calc(100vh - 88px)", overflow: "hidden" }}>
+    <div style={{ background: "#FAFAF9", height: "calc(100vh - 64px)", overflow: "hidden" }}>
       <iframe
         src="/process-map.html"
         title="Jar of Jam Process Map"
@@ -557,7 +557,146 @@ function ProcessMap() {
   );
 }
 
+function Home({ goto }) {
+  const mono = "'JetBrains Mono',monospace";
+  const ACCENT = "#14b8a6";
+
+  const cards = [
+    {
+      eyebrow: "March 2026 · live data",
+      title: "Produce Pricing Comparison",
+      desc: "Side-by-side prices across Park Slope Food Coop, Farm to People, and FreshDirect. 360+ items normalized for unit and organic status to expose dollar and percentage gaps — and to quantify the FTP premium as a dollar-weighted average.",
+      stats: [
+        { k: "items", v: `${DATA.length}` },
+        { k: "retailers", v: "3" },
+        { k: "categories", v: `${new Set(DATA.map(d => d.cat)).size}` },
+      ],
+      cta: "Open pricing analysis",
+      section: "pricing",
+      accent: "#a78bfa",
+    },
+    {
+      eyebrow: "Capture-reality view",
+      title: "Jar of Jam — Lifecycle Map",
+      desc: "The end-to-end path of a single SKU through procurement, warehouse, website, and delivery. 20 steps across 5 lanes, with an exception engine — making visible which steps are captured in a system and which leak.",
+      stats: [
+        { k: "steps", v: "20" },
+        { k: "lanes", v: "5" },
+        { k: "off-system", v: "10" },
+      ],
+      cta: "Open process map",
+      section: "processmap",
+      accent: "#4F46E5",
+    },
+  ];
+
+  return (
+    <div style={{ background: "#09090b", color: "#e4e4e7", minHeight: "calc(100vh - 64px)" }}>
+      <section style={{ maxWidth: 1100, margin: "0 auto", padding: "96px 32px 56px" }}>
+        <div style={{ fontSize: 11, color: ACCENT, fontFamily: mono, letterSpacing: 2.5, textTransform: "uppercase", marginBottom: 24, fontWeight: 600 }}>
+          Farm to People · Independent work
+        </div>
+        <h1 style={{ fontSize: "clamp(36px, 5vw, 56px)", fontWeight: 700, lineHeight: 1.05, margin: 0, color: "#fafafa", maxWidth: 880, letterSpacing: -1.5 }}>
+          Tools to make the pricing landscape and the operations behind it legible.
+        </h1>
+        <p style={{ fontSize: 17, color: "#a1a1aa", lineHeight: 1.55, marginTop: 28, maxWidth: 720 }}>
+          A contract collaboration with Farm to People. Two artifacts so far — a competitive pricing analysis against the produce a customer can buy elsewhere in Brooklyn, and a process map tracing a single SKU from receiving dock to doorstep.
+        </p>
+        <div style={{ display: "flex", gap: 10, marginTop: 36, flexWrap: "wrap" }}>
+          <button onClick={() => goto("pricing")} style={{
+            background: "#fafafa", color: "#09090b", border: "none", padding: "12px 20px",
+            borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
+          }}>View pricing analysis →</button>
+          <button onClick={() => goto("processmap")} style={{
+            background: "transparent", color: "#e4e4e7", border: "1px solid #3f3f46", padding: "12px 20px",
+            borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
+          }}>Open process map →</button>
+        </div>
+      </section>
+
+      <section style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 32px 64px" }}>
+        <div style={{ fontSize: 10, color: "#52525b", fontFamily: mono, letterSpacing: 2, textTransform: "uppercase", marginBottom: 18, fontWeight: 600 }}>
+          Work to date
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))", gap: 16 }}>
+          {cards.map((c, i) => (
+            <div key={i} onClick={() => goto(c.section)} role="button" tabIndex={0}
+              onKeyDown={(e) => { if (e.key === "Enter") goto(c.section); }}
+              style={{
+                background: "#111114", border: "1px solid #1f1f23", borderRadius: 14,
+                padding: 28, cursor: "pointer", transition: "all 0.2s ease",
+                display: "flex", flexDirection: "column", position: "relative", overflow: "hidden",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = c.accent + "66";
+                e.currentTarget.style.transform = "translateY(-2px)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = "#1f1f23";
+                e.currentTarget.style.transform = "translateY(0)";
+              }}
+            >
+              <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: c.accent, opacity: 0.6 }} />
+              <div style={{ fontSize: 10, color: c.accent, fontFamily: mono, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 12, fontWeight: 600 }}>
+                {c.eyebrow}
+              </div>
+              <h2 style={{ fontSize: 22, fontWeight: 700, color: "#fafafa", margin: 0, letterSpacing: -0.5 }}>
+                {c.title}
+              </h2>
+              <p style={{ fontSize: 13.5, color: "#a1a1aa", lineHeight: 1.6, marginTop: 12, marginBottom: 20, flex: 1 }}>
+                {c.desc}
+              </p>
+              <div style={{ display: "flex", gap: 24, paddingBottom: 18, marginBottom: 18, borderBottom: "1px solid #1f1f23" }}>
+                {c.stats.map((s, j) => (
+                  <div key={j}>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: "#fafafa", fontFamily: mono, lineHeight: 1 }}>{s.v}</div>
+                    <div style={{ fontSize: 10, color: "#52525b", fontFamily: mono, textTransform: "uppercase", letterSpacing: 1, marginTop: 4 }}>{s.k}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: c.accent }}>{c.cta}</span>
+                <span style={{ fontSize: 16, color: c.accent }}>→</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section style={{ borderTop: "1px solid #1c1c22", background: "#0a0a0d" }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto", padding: "48px 32px 64px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 32 }}>
+          <div>
+            <div style={{ fontSize: 10, color: "#52525b", fontFamily: mono, letterSpacing: 2, textTransform: "uppercase", marginBottom: 12, fontWeight: 600 }}>
+              What this is
+            </div>
+            <p style={{ fontSize: 13, color: "#a1a1aa", lineHeight: 1.7, margin: 0 }}>
+              A working space for the Farm to People engagement. Both pieces above are live, interactive web apps — not slides or PDFs. The intent is to keep adding tools as questions surface.
+            </p>
+          </div>
+          <div>
+            <div style={{ fontSize: 10, color: "#52525b", fontFamily: mono, letterSpacing: 2, textTransform: "uppercase", marginBottom: 12, fontWeight: 600 }}>
+              Built with
+            </div>
+            <p style={{ fontSize: 13, color: "#a1a1aa", lineHeight: 1.7, margin: 0 }}>
+              React, Vite, SVG. Deployed on Vercel. Source data refreshed manually as of March 2026.
+            </p>
+          </div>
+          <div>
+            <div style={{ fontSize: 10, color: "#52525b", fontFamily: mono, letterSpacing: 2, textTransform: "uppercase", marginBottom: 12, fontWeight: 600 }}>
+              Next
+            </div>
+            <p style={{ fontSize: 13, color: "#a1a1aa", lineHeight: 1.7, margin: 0 }}>
+              Productivity modeling, exception capture, and reconciliation tooling are all candidates. Tell me where the next leverage point is.
+            </p>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export default function App() {
+  const [section, setSection] = useState("home");
   const [tab, setTab] = useState("summary");
   const [search, setSearch] = useState("");
   const [selectedCat, setSelectedCat] = useState("All");
@@ -609,9 +748,42 @@ export default function App() {
 
   const s = { fontFamily:"'DM Sans','Helvetica Neue',sans-serif" };
 
+  const sections = [
+    { id: "home",       label: "Home" },
+    { id: "pricing",    label: "Pricing Analysis" },
+    { id: "processmap", label: "Process Map" },
+  ];
+
   return (
     <div style={{ ...s, background:"#09090b", color:"#e4e4e7", minHeight:"100vh", overflowX:"hidden" }}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+      <nav style={{
+        position:"sticky", top:0, zIndex:50,
+        background:"rgba(9,9,11,0.85)", backdropFilter:"blur(10px)", WebkitBackdropFilter:"blur(10px)",
+        borderBottom:"1px solid #1c1c22",
+        padding:"14px 24px",
+        display:"flex", alignItems:"center", justifyContent:"space-between", gap:16, flexWrap:"wrap",
+      }}>
+        <div onClick={()=>setSection("home")} style={{ cursor:"pointer", display:"flex", alignItems:"baseline", gap:8 }}>
+          <span style={{ fontSize:15, fontWeight:700, color:"#fafafa", letterSpacing:-0.3 }}>Farm to People</span>
+          <span style={{ fontSize:11, color:"#52525b", fontFamily:"'JetBrains Mono',monospace", letterSpacing:0.5 }}>· workspace</span>
+        </div>
+        <div style={{ display:"flex", gap:2 }}>
+          {sections.map(sec => (
+            <button key={sec.id} onClick={()=>setSection(sec.id)} style={{
+              background: section===sec.id ? "#1c1c22" : "transparent",
+              border:"1px solid " + (section===sec.id ? "#27272a" : "transparent"),
+              color: section===sec.id ? "#fafafa" : "#a1a1aa",
+              padding:"7px 14px", borderRadius:7, fontSize:13, fontWeight:500, cursor:"pointer",
+              fontFamily:"inherit", transition:"all 0.15s",
+            }}>{sec.label}</button>
+          ))}
+        </div>
+      </nav>
+
+      {section === "home" && <Home goto={setSection} />}
+      {section === "processmap" && <ProcessMap />}
+      {section === "pricing" && <>
       <div style={{ padding:"20px 24px 16px", borderBottom:"1px solid #1c1c22" }}>
         <h1 style={{ fontSize:20, fontWeight:700, margin:0, color:"#fafafa", letterSpacing:"-0.5px" }}>Brooklyn Produce Price Comparison</h1>
         <p style={{ fontSize:11, color:"#52525b", margin:"4px 0 0", fontFamily:"'JetBrains Mono',monospace" }}>PSFC · Farm to People · FreshDirect — March 27, 2026</p>
@@ -619,7 +791,6 @@ export default function App() {
           {[
             {id:"summary",label:"Summary",color:"#a78bfa"},
             {id:"basket",label:"Basket Cost",color:"#ec4899"},
-            {id:"processmap",label:"Process Map",color:"#4F46E5"},
             {id:"compare",label:"Comparison",count:DATA.length},
             {id:"psfc",label:"PSFC",count:PSFC.length,color:RC.PSFC},
             {id:"ftp",label:"FTP",count:FTP.length,color:RC.FTP},
@@ -768,10 +939,10 @@ export default function App() {
       </>}
       {tab === "summary" && <ExecSummary stats={stats} />}
       {tab === "basket" && <BasketCost />}
-      {tab === "processmap" && <ProcessMap />}
       {tab === "psfc" && <RetailerList data={PSFC} search={search} color={RC.PSFC} name={`Park Slope Food Coop — ${PSFC.length} items · Daily Price List March 27, 2026`} />}
       {tab === "ftp" && <RetailerList data={FTP} search={search} color={RC.FTP} name={`Farm to People — ${FTP.length} items · Logged-in prices March 27, 2026`} />}
       {tab === "fd" && <RetailerList data={FD} search={search} color={RC.FD} name={`FreshDirect — ${FD.length} items · Search prices March 28, 2026`} />}
+      </>}
     </div>
   );
 }
