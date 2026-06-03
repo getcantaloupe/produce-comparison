@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Jar of Jam — Process Map (Farm to People)</title>
+<style>
+  :root {
+    --bg: #FAFAF9;
+    --panel: #FFFFFF;
+    --ink: #0F172A;
+    --ink-mute: #475569;
+    --line: #CBD5E1;
+    --indigo: #4F46E5;
+    --amber: #D97706;
+    --teal: #0D9488;
+    --violet: #7C3AED;
+    --red: #DC2626;
+    --green: #16A34A;
+    --blue: #2563EB;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--ink); }
+  header { padding: 20px 28px; background: #fff; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  header h1 { margin: 0; font-size: 20px; }
+  header .sub { font-size: 12.5px; color: var(--ink-mute); margin-top: 2px; }
+  .tabs { display: flex; gap: 6px; }
+  .tab { padding: 7px 14px; border: 1px solid var(--line); background: #fff; border-radius: 999px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+  .tab.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .toolbar { padding: 12px 28px; background: #fff; border-bottom: 1px solid var(--line); display: flex; gap: 18px; align-items: center; flex-wrap: wrap; font-size: 12.5px; }
+  .toolbar .group { display: flex; gap: 6px; align-items: center; }
+  .toolbar .label { color: var(--ink-mute); font-weight: 600; }
+  .chip { padding: 5px 10px; border: 1px solid var(--line); border-radius: 999px; cursor: pointer; background: #fff; font-size: 12px; user-select: none; }
+  .chip.active { background: #0F172A; color: #fff; border-color: #0F172A; }
+  .chip.warn.active { background: var(--red); border-color: var(--red); color: #fff; }
+  .chip.system.active { background: var(--indigo); border-color: var(--indigo); color: #fff; }
+  .chip.off.active { background: var(--amber); border-color: var(--amber); color: #fff; }
+  .chip.scan.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .chip.sheet.active { background: var(--red); border-color: var(--red); color: #fff; }
+
+  main { display: grid; grid-template-columns: 1fr 340px; gap: 16px; padding: 16px 28px 60px; }
+  .canvas { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; overflow: auto; }
+  .canvas svg { width: 100%; height: auto; display: block; }
+  .side { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; position: sticky; top: 16px; align-self: start; max-height: calc(100vh - 32px); overflow: auto; }
+  .side h3 { margin: 0 0 8px; font-size: 14px; }
+  .side .muted { color: var(--ink-mute); font-size: 12px; }
+  .side .row { padding: 10px 0; border-top: 1px solid #F1F5F9; font-size: 12.5px; }
+  .side .row:first-of-type { border-top: 0; }
+  .side .row .k { color: var(--ink-mute); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; }
+  .side .row .v { margin-top: 2px; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 700; }
+  .pill.system { background: #EEF2FF; color: var(--indigo); }
+  .pill.off { background: #FEF3C7; color: var(--amber); }
+  .pill.sheet { background: #FEE2E2; color: var(--red); }
+  .pill.scan { background: #DBEAFE; color: var(--blue); }
+  .pill.endpoint { background: #DCFCE7; color: var(--green); }
+  .pill.warn { background: #FEE2E2; color: var(--red); }
+
+  .step { cursor: pointer; transition: filter .12s ease, opacity .12s ease; }
+  .step:hover { filter: drop-shadow(0 2px 6px rgba(15,23,42,0.25)); }
+  .step.dimmed { opacity: 0.18; }
+  .step.selected rect { stroke-width: 3.6 !important; }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .actions { margin-top: 14px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .actions a { font-size: 11.5px; padding: 5px 10px; border: 1px solid var(--line); border-radius: 999px; text-decoration: none; color: var(--ink); }
+  .actions a:hover { background: #F1F5F9; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Jar of Jam — Process Map</h1>
+    <div class="sub">Farm to People · capture-reality view · click any step for detail</div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" data-tab="swim">End-to-end swimlane</button>
+    <button class="tab" data-tab="engine">Step-14 Exception Engine</button>
+  </div>
+</header>
+
+<div class="toolbar" id="toolbar">
+  <div class="group">
+    <span class="label">Highlight:</span>
+    <span class="chip system" data-filter="system">in-system</span>
+    <span class="chip off" data-filter="off">off-system</span>
+    <span class="chip sheet" data-filter="sheet">spreadsheet</span>
+    <span class="chip scan" data-filter="scan">scanned ✓</span>
+    <span class="chip warn" data-filter="warn">⚠ can divert</span>
+    <span class="chip" data-filter="reset">reset</span>
+  </div>
+  <div class="group" style="margin-left: auto;">
+    <span class="muted">10 of 20 steps are off-system — 9 of them sit in the warehouse lane. Step 6 is the one in-system touchpoint.</span>
+  </div>
+</div>
+
+<main>
+  <section class="canvas">
+    <div class="panel active" id="panel-swim">
+      <svg id="swimSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 2480" font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#DC2626"/></marker>
+    <marker id="arrow-indigo" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#4F46E5"/></marker>
+    <style>
+      .lane-title{font-size:16px;font-weight:700;fill:#fff;letter-spacing:0.5px}
+      .lane-sub{font-size:11px;fill:#fff;opacity:0.85}
+      .step-num{font-size:13px;font-weight:700;fill:#0F172A}
+      .step-title{font-size:12.5px;font-weight:600;fill:#0F172A}
+      .step-meta{font-size:10.5px;fill:#475569}
+      .warn{font-size:12px;font-weight:700;fill:#DC2626}
+      .title{font-size:22px;font-weight:700;fill:#0F172A}
+      .subtitle{font-size:12.5px;fill:#475569}
+      .rail-summary{font-size:11px;fill:#7F1D1D}
+      .rail-summary-b{font-size:11px;font-weight:700;fill:#7F1D1D}
+      .headline{font-size:12px;font-weight:600;fill:#92400E}
+    </style>
+  </defs>
+  <text x="40" y="40" class="title">Jar of Jam — lifecycle (Farm to People)</text>
+  <text x="40" y="62" class="subtitle">Vertical swimlane · 20 steps · capture-reality encoding · exception rail right · PO state lifecycle in ERP lane</text>
+  <rect x="0" y="90" width="80" height="40" fill="#1E293B"/><text x="40" y="115" text-anchor="middle" class="lane-title">TIME</text>
+  <rect x="80" y="90" width="240" height="40" fill="#4F46E5"/><text x="200" y="113" text-anchor="middle" class="lane-title">ERP / PROCUREMENT</text><text x="200" y="126" text-anchor="middle" class="lane-sub">system of record · PO · inventory · revenue</text>
+  <rect x="320" y="90" width="240" height="40" fill="#D97706"/><text x="440" y="113" text-anchor="middle" class="lane-title">WAREHOUSE</text><text x="440" y="126" text-anchor="middle" class="lane-sub">physical ops · mostly off-system</text>
+  <rect x="560" y="90" width="240" height="40" fill="#0D9488"/><text x="680" y="113" text-anchor="middle" class="lane-title">FtP WEBSITE</text><text x="680" y="126" text-anchor="middle" class="lane-sub">sales · billing (Farm to People)</text>
+  <rect x="800" y="90" width="240" height="40" fill="#7C3AED"/><text x="920" y="113" text-anchor="middle" class="lane-title">ONFLEET / DELIVERY</text><text x="920" y="126" text-anchor="middle" class="lane-sub">routes · stops · driver · the bottleneck</text>
+  <rect x="1060" y="90" width="280" height="40" fill="#DC2626"/><text x="1200" y="113" text-anchor="middle" class="lane-title">EXCEPTION STATE ⚠</text><text x="1200" y="126" text-anchor="middle" class="lane-sub">any ⚠ step can divert · reason + timestamp</text>
+  <rect x="0" y="130" width="80" height="2270" fill="#F1F5F9"/>
+  <rect x="80" y="130" width="240" height="2270" fill="#EEF2FF"/>
+  <rect x="320" y="130" width="240" height="2270" fill="#FEF3C7"/>
+  <rect x="560" y="130" width="240" height="2270" fill="#CCFBF1"/>
+  <rect x="800" y="130" width="240" height="2270" fill="#EDE9FE"/>
+  <rect x="1060" y="130" width="280" height="2270" fill="#FEE2E2"/>
+  <line x1="80" y1="130" x2="80" y2="2400" stroke="#CBD5E1"/>
+  <line x1="320" y1="130" x2="320" y2="2400" stroke="#CBD5E1"/>
+  <line x1="560" y1="130" x2="560" y2="2400" stroke="#CBD5E1"/>
+  <line x1="800" y1="130" x2="800" y2="2400" stroke="#CBD5E1"/>
+  <line x1="1040" y1="130" x2="1040" y2="2400" stroke="#CBD5E1"/>
+  <line x1="1060" y1="130" x2="1060" y2="2400" stroke="#CBD5E1"/>
+  <rect x="340" y="142" width="700" height="34" rx="6" fill="#FFFBEB" stroke="#D97706" stroke-width="1.5"/>
+  <text x="690" y="164" text-anchor="middle" class="headline">⬇ Warehouse nearly all off-system · step 6 is the one in-system touch · PO state lifecycle decouples availability from physical arrival ⬇</text>
+  <g stroke="#475569" stroke-width="1.6" fill="none" marker-end="url(#arrow)">
+    <line x1="200" y1="280" x2="200" y2="305"/>
+    <line x1="200" y1="388" x2="200" y2="413"/>
+    <path d="M 200 496 L 200 514 L 440 514 L 440 528"/>
+    <line x1="440" y1="604" x2="440" y2="629"/>
+    <line x1="440" y1="712" x2="440" y2="737"/>
+    <line x1="440" y1="820" x2="440" y2="845"/>
+    <line x1="440" y1="928" x2="440" y2="953"/>
+    <path d="M 440 1036 L 440 1054 L 680 1054 L 680 1068"/>
+    <line x1="680" y1="1144" x2="680" y2="1169"/>
+    <path d="M 680 1252 L 680 1270 L 920 1270 L 920 1284"/>
+    <path d="M 920 1360 L 920 1378 L 440 1378 L 440 1392"/>
+    <path d="M 440 1468 L 440 1486 L 920 1486 L 920 1500"/>
+    <path d="M 920 1576 L 920 1594 L 440 1594 L 440 1608"/>
+    <line x1="440" y1="1684" x2="440" y2="1709"/>
+    <line x1="440" y1="1792" x2="440" y2="1817"/>
+    <line x1="440" y1="1900" x2="440" y2="1925"/>
+    <path d="M 440 2008 L 440 2026 L 920 2026 L 920 2040"/>
+    <line x1="920" y1="2116" x2="920" y2="2141"/>
+    <line x1="920" y1="2224" x2="920" y2="2249"/>
+  </g>
+  <g stroke="#DC2626" stroke-width="1.1" stroke-dasharray="4 3" fill="none" marker-end="url(#arrow-red)">
+    <path d="M 300 456 L 1060 456"/>
+    <path d="M 540 564 L 1060 564"/>
+    <path d="M 540 672 L 1060 672"/>
+    <path d="M 540 780 L 1060 780"/>
+    <path d="M 540 996 L 1060 996"/>
+    <path d="M 780 1104 L 1060 1104"/>
+    <path d="M 780 1212 L 1060 1212"/>
+    <path d="M 540 1428 L 1060 1428"/>
+    <path d="M 540 1644 L 1060 1644" stroke-width="2"/>
+    <path d="M 540 1860 L 1060 1860"/>
+    <path d="M 540 1968 L 1060 1968"/>
+    <path d="M 1020 2184 L 1060 2184"/>
+  </g>
+  <g><rect x="6" y="1183" width="68" height="58" rx="6" fill="#0F172A"/><text x="40" y="1206" text-anchor="middle" fill="#FBBF24" font-size="14" font-weight="700">12pm</text><text x="40" y="1222" text-anchor="middle" fill="#E2E8F0" font-size="9">charge</text><text x="40" y="1233" text-anchor="middle" fill="#E2E8F0" font-size="9">day before</text></g>
+  <g><rect x="6" y="1291" width="68" height="58" rx="6" fill="#0F172A"/><text x="40" y="1314" text-anchor="middle" fill="#FBBF24" font-size="14" font-weight="700">5pm</text><text x="40" y="1330" text-anchor="middle" fill="#E2E8F0" font-size="9">route +</text><text x="40" y="1341" text-anchor="middle" fill="#E2E8F0" font-size="9">prepick list</text></g>
+  <g><rect x="6" y="1507" width="68" height="58" rx="6" fill="#0F172A"/><text x="40" y="1530" text-anchor="middle" fill="#FBBF24" font-size="14" font-weight="700">8pm</text><text x="40" y="1546" text-anchor="middle" fill="#E2E8F0" font-size="9">stop assign</text><text x="40" y="1557" text-anchor="middle" fill="#E2E8F0" font-size="9">slip + label</text></g>
+  <g><rect x="100" y="200" width="200" height="80" rx="8" fill="#fff" stroke="#4F46E5" stroke-width="1.8" stroke-dasharray="6 4"/><text x="112" y="222" class="step-num">1</text><text x="200" y="244" text-anchor="middle" class="step-title">Decide to sell a Jar of Jam</text><text x="200" y="262" text-anchor="middle" class="step-meta">off-system · product call</text></g>
+  <g><rect x="100" y="308" width="200" height="80" rx="8" fill="#fff" stroke="#4F46E5" stroke-width="2"/><text x="112" y="330" class="step-num">2</text><text x="200" y="352" text-anchor="middle" class="step-title">Find + create vendor in ERP</text><text x="200" y="370" text-anchor="middle" class="step-meta">system · master record</text></g>
+  <g><rect x="100" y="416" width="200" height="80" rx="8" fill="#fff" stroke="#4F46E5" stroke-width="2"/><text x="112" y="438" class="step-num">3</text><text x="200" y="460" text-anchor="middle" class="step-title">Draft PO + delivery date</text><text x="200" y="478" text-anchor="middle" class="step-meta">system · see PO state lifecycle ↓</text><text x="288" y="438" class="warn">⚠</text></g>
+  <!-- PO STATE LIFECYCLE (cleaned, with Include/Exclude timing nuance) -->
+  <g>
+    <!-- sidebar background -->
+    <rect x="92" y="508" width="216" height="328" rx="10" fill="#F8FAFF" stroke="#4F46E5" stroke-width="1.4"/>
+    <!-- left accent bar -->
+    <rect x="92" y="508" width="4" height="328" fill="#4F46E5"/>
+    <!-- header -->
+    <text x="106" y="528" font-size="12" font-weight="700" fill="#3730A3">PO state lifecycle</text>
+    <text x="106" y="542" font-size="9.5" font-style="italic" fill="#475569">flags on Draft set availability timing</text>
+
+    <!-- STATE 1: Draft (taller, with Include / Exclude sub-pills) -->
+    <rect x="104" y="552" width="192" height="78" rx="6" fill="#fff" stroke="#4F46E5" stroke-width="1.3"/>
+    <text x="200" y="568" text-anchor="middle" font-size="11.5" font-weight="700" fill="#3730A3">Draft</text>
+    <!-- Include = Y sub-pill (accent) -->
+    <rect x="110" y="574" width="88" height="26" rx="4" fill="#EEF2FF" stroke="#4F46E5" stroke-width="1"/>
+    <text x="154" y="585" text-anchor="middle" font-size="9.5" font-weight="700" fill="#3730A3">Include = Y</text>
+    <text x="154" y="595" text-anchor="middle" font-size="8.5" fill="#3730A3">live at stock-by date</text>
+    <!-- Exclude sub-pill (default) -->
+    <rect x="202" y="574" width="88" height="26" rx="4" fill="#FFFBEB" stroke="#D97706" stroke-width="1"/>
+    <text x="246" y="585" text-anchor="middle" font-size="9.5" font-weight="700" fill="#92400E">Exclude (default)</text>
+    <text x="246" y="595" text-anchor="middle" font-size="8.5" fill="#92400E">~24h after receipt</text>
+    <!-- footnote: shopping window lag -->
+    <text x="200" y="616" text-anchor="middle" font-size="9" font-style="italic" fill="#475569">Exclude path: customer can't shop the jar</text>
+    <text x="200" y="626" text-anchor="middle" font-size="9" font-style="italic" fill="#475569">in their box for ~24h after receive</text>
+
+    <!-- arrow down -->
+    <line x1="200" y1="634" x2="200" y2="648" stroke="#4F46E5" stroke-width="1.4" marker-end="url(#arrow-indigo)"/>
+
+    <!-- STATE 2: Submitted -->
+    <rect x="104" y="652" width="192" height="36" rx="6" fill="#fff" stroke="#4F46E5" stroke-width="1.3"/>
+    <text x="200" y="669" text-anchor="middle" font-size="11" font-weight="700" fill="#3730A3">Submitted</text>
+    <text x="200" y="681" text-anchor="middle" font-size="9" fill="#475569">→ To Receive &amp; Bill</text>
+
+    <!-- arrow down -->
+    <line x1="200" y1="690" x2="200" y2="704" stroke="#4F46E5" stroke-width="1.4" marker-end="url(#arrow-indigo)"/>
+
+    <!-- STATE 3: branch — Full / Partial -->
+    <rect x="104" y="708" width="92" height="48" rx="6" fill="#DCFCE7" stroke="#16A34A" stroke-width="1.3"/>
+    <text x="150" y="724" text-anchor="middle" font-size="10.5" font-weight="700" fill="#14532D">Full receipt</text>
+    <text x="150" y="736" text-anchor="middle" font-size="9" fill="#166534">→ To Bill (auto)</text>
+    <text x="150" y="748" text-anchor="middle" font-size="8.5" font-style="italic" fill="#166534">happy path</text>
+
+    <rect x="204" y="708" width="92" height="48" rx="6" fill="#FEF2F2" stroke="#DC2626" stroke-width="1.3"/>
+    <text x="250" y="724" text-anchor="middle" font-size="10.5" font-weight="700" fill="#7F1D1D">Partial</text>
+    <text x="250" y="736" text-anchor="middle" font-size="8.5" fill="#7F1D1D">short / damage</text>
+    <text x="250" y="748" text-anchor="middle" font-size="8.5" fill="#7F1D1D">or still receiving</text>
+
+    <!-- converge arrows -->
+    <line x1="150" y1="758" x2="180" y2="772" stroke="#4F46E5" stroke-width="1.4"/>
+    <line x1="250" y1="758" x2="220" y2="772" stroke="#DC2626" stroke-width="1.4" stroke-dasharray="3 2"/>
+
+    <!-- STATE 4: Closed (manual) — flagged failure point -->
+    <rect x="124" y="776" width="152" height="36" rx="6" fill="#FFFBEB" stroke="#D97706" stroke-width="1.6"/>
+    <text x="200" y="793" text-anchor="middle" font-size="11" font-weight="700" fill="#92400E">Closed (manual)</text>
+    <text x="200" y="805" text-anchor="middle" font-size="8.5" font-style="italic" fill="#92400E">known failure: lingering POs</text>
+
+    <!-- footer note about cross-lane path -->
+    <text x="200" y="826" text-anchor="middle" font-size="9" font-style="italic" fill="#3730A3">Include=Y route exits → step 9 (pre-arrival sale)</text>
+  </g>
+
+  <!-- Cross-lane arrow: Include=Y → step 9 fires before step 4 (physical arrival) -->
+  <g>
+    <path d="M 200 836 L 200 1052 L 580 1052 L 580 1062" fill="none" stroke="#4F46E5" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#arrow-indigo)"/>
+    <rect x="240" y="1036" width="290" height="20" rx="4" fill="#EEF2FF" stroke="#4F46E5" stroke-width="0.8"/>
+    <text x="385" y="1050" text-anchor="middle" font-size="10" font-weight="600" fill="#3730A3">Include=Y → website live before physical arrival</text>
+  </g>
+  <g><rect x="340" y="524" width="200" height="80" rx="8" fill="#fff" stroke="#D97706" stroke-width="1.8" stroke-dasharray="6 4"/><text x="352" y="546" class="step-num">4</text><text x="440" y="568" text-anchor="middle" class="step-title">PO arrives at warehouse</text><text x="440" y="586" text-anchor="middle" class="step-meta">off-system · no system event</text><text x="528" y="546" class="warn">⚠</text></g>
+  <g><rect x="340" y="632" width="200" height="80" rx="8" fill="#fff" stroke="#D97706" stroke-width="1.8" stroke-dasharray="6 4"/><text x="352" y="654" class="step-num">5</text><text x="440" y="676" text-anchor="middle" class="step-title">Sits on receiving dock</text><text x="440" y="694" text-anchor="middle" class="step-meta">off-system · no check-in</text><text x="528" y="654" class="warn">⚠</text></g>
+  <g>
+    <rect x="332" y="736" width="216" height="88" rx="10" fill="#FFFBEB" stroke="#4F46E5" stroke-width="3"/>
+    <rect x="332" y="736" width="216" height="14" rx="10" fill="#4F46E5"/>
+    <text x="440" y="747" text-anchor="middle" fill="#fff" font-size="9.5" font-weight="700">★ THE ONE WAREHOUSE↔SYSTEM TOUCH</text>
+    <text x="342" y="772" class="step-num">6</text>
+    <text x="440" y="792" text-anchor="middle" class="step-title">Count full PO → purchase receipt</text>
+    <text x="440" y="810" text-anchor="middle" class="step-meta">system · full→auto, partial→manual close</text>
+    <text x="528" y="772" class="warn">⚠</text>
+  </g>
+  <g><rect x="340" y="848" width="200" height="80" rx="8" fill="#fff" stroke="#D97706" stroke-width="1.8" stroke-dasharray="6 4"/><text x="352" y="870" class="step-num">7</text><text x="440" y="892" text-anchor="middle" class="step-title">Moved to area, left on pallet</text><text x="440" y="910" text-anchor="middle" class="step-meta">off-system · space-driven, in heads</text></g>
+  <g><rect x="340" y="956" width="200" height="80" rx="8" fill="#fff" stroke="#D97706" stroke-width="1.8" stroke-dasharray="6 4"/><text x="352" y="978" class="step-num">8</text><text x="440" y="1000" text-anchor="middle" class="step-title">Restock into a location (if time)</text><text x="440" y="1018" text-anchor="middle" class="step-meta">hybrid · ~50% put away ahead</text><text x="528" y="978" class="warn">⚠</text></g>
+  <g><rect x="580" y="1064" width="200" height="80" rx="8" fill="#fff" stroke="#0D9488" stroke-width="2"/><text x="592" y="1086" class="step-num">9</text><text x="680" y="1108" text-anchor="middle" class="step-title">Customer adds jar to order</text><text x="680" y="1126" text-anchor="middle" class="step-meta">system · hard reserve · one-off / recurring</text><text x="768" y="1086" class="warn">⚠</text></g>
+  <g><rect x="580" y="1172" width="200" height="80" rx="8" fill="#fff" stroke="#0D9488" stroke-width="2"/><text x="592" y="1194" class="step-num">10</text><text x="680" y="1216" text-anchor="middle" class="step-title">Customer charged</text><text x="680" y="1234" text-anchor="middle" class="step-meta">system · 12pm day before ship</text><text x="768" y="1194" class="warn">⚠</text></g>
+  <g><rect x="820" y="1280" width="200" height="80" rx="8" fill="#fff" stroke="#7C3AED" stroke-width="2"/><text x="832" y="1302" class="step-num">11</text><text x="920" y="1322" text-anchor="middle" class="step-title">Route A–ZZZ + prepick list</text><text x="920" y="1340" text-anchor="middle" class="step-meta">system · ERP-generated · 5pm</text><text x="920" y="1354" text-anchor="middle" fill="#7C3AED" font-size="9" font-style="italic">(ERP → Onfleet)</text></g>
+  <g><rect x="340" y="1388" width="200" height="80" rx="8" fill="#fff" stroke="#D97706" stroke-width="1.8" stroke-dasharray="6 4"/><text x="352" y="1410" class="step-num">12</text><text x="440" y="1430" text-anchor="middle" class="step-title">Pre-pick: locate → route bin</text><text x="440" y="1446" text-anchor="middle" class="step-meta">off-system · miss → paper + Slack</text><text x="440" y="1460" text-anchor="middle" fill="#92400E" font-size="9" font-style="italic">not recorded</text><text x="528" y="1410" class="warn">⚠</text></g>
+  <g><rect x="820" y="1496" width="200" height="80" rx="8" fill="#fff" stroke="#7C3AED" stroke-width="2"/><text x="832" y="1518" class="step-num">13</text><text x="920" y="1538" text-anchor="middle" class="step-title">Assign stop 1–50 · slip + label</text><text x="920" y="1556" text-anchor="middle" class="step-meta">system docs · 8pm</text><text x="920" y="1570" text-anchor="middle" fill="#7C3AED" font-size="9" font-style="italic">slip = expected order (blind to prepick)</text></g>
+  <g><rect x="332" y="1600" width="216" height="88" rx="10" fill="#FEF2F2" stroke="#DC2626" stroke-width="2.4" stroke-dasharray="6 4"/><text x="344" y="1624" class="step-num">14</text><text x="440" y="1646" text-anchor="middle" class="step-title">Pick to crate · match Route+Stop</text><text x="440" y="1664" text-anchor="middle" class="step-meta">missing → write "H" · off-system</text><text x="440" y="1680" text-anchor="middle" fill="#7F1D1D" font-size="9.5" font-weight="700">→ see Exception (Hold) Engine</text><text x="528" y="1624" class="warn">⚠</text></g>
+  <g><rect x="340" y="1712" width="200" height="80" rx="8" fill="#fff" stroke="#D97706" stroke-width="1.8" stroke-dasharray="6 4"/><text x="352" y="1734" class="step-num">15</text><text x="440" y="1756" text-anchor="middle" class="step-title">Crate → box · produce via PTL</text><text x="440" y="1774" text-anchor="middle" class="step-meta">off-system · PTL logging unknown</text></g>
+  <g><rect x="340" y="1820" width="200" height="80" rx="8" fill="#fff" stroke="#D97706" stroke-width="1.8" stroke-dasharray="6 4"/><text x="352" y="1842" class="step-num">16</text><text x="440" y="1864" text-anchor="middle" class="step-title">Add bakery items / flowers</text><text x="440" y="1882" text-anchor="middle" class="step-meta">off-system · predictable unrecorded holds</text><text x="528" y="1842" class="warn">⚠</text></g>
+  <g><rect x="340" y="1928" width="200" height="80" rx="8" fill="#FEF2F2" stroke="#DC2626" stroke-width="1.8" stroke-dasharray="6 4"/><text x="352" y="1950" class="step-num">17</text><text x="440" y="1972" text-anchor="middle" class="step-title">Seal + mark shipped</text><text x="440" y="1990" text-anchor="middle" fill="#7F1D1D" font-size="10.5" font-weight="600">double-box spreadsheet (off-system tool)</text><text x="528" y="1950" class="warn">⚠</text></g>
+  <g><rect x="820" y="2036" width="200" height="80" rx="8" fill="#fff" stroke="#7C3AED" stroke-width="2"/><text x="832" y="2058" class="step-num">18</text><text x="920" y="2080" text-anchor="middle" class="step-title">Driver loads boxes</text><text x="920" y="2098" text-anchor="middle" class="step-meta">system · Onfleet-assigned</text></g>
+  <g><rect x="820" y="2144" width="200" height="80" rx="8" fill="#fff" stroke="#7C3AED" stroke-width="2"/><text x="832" y="2166" class="step-num">19</text><text x="920" y="2188" text-anchor="middle" class="step-title">Driver marks delivered</text><text x="920" y="2206" text-anchor="middle" class="step-meta">Onfleet → ERP feed · live API (likely)</text><text x="1008" y="2166" class="warn">⚠</text></g>
+  <g><rect x="820" y="2252" width="200" height="80" rx="8" fill="#DCFCE7" stroke="#16A34A" stroke-width="2.4"/><text x="832" y="2274" class="step-num">20</text><text x="920" y="2296" text-anchor="middle" fill="#14532D" font-size="13" font-weight="700">Delivered — jam on toast</text><text x="920" y="2314" text-anchor="middle" fill="#166534" font-size="11">endpoint · happy path</text></g>
+  <g>
+    <rect x="1080" y="200" width="240" height="240" rx="10" fill="#fff" stroke="#DC2626" stroke-width="1.5"/>
+    <text x="1200" y="222" text-anchor="middle" fill="#7F1D1D" font-size="13" font-weight="700">Exception model</text>
+    <text x="1092" y="246" class="rail-summary-b">Carries:</text>
+    <text x="1092" y="260" class="rail-summary">· reason</text>
+    <text x="1092" y="274" class="rail-summary">· timestamp</text>
+    <text x="1092" y="288" class="rail-summary">· step of origin</text>
+    <text x="1092" y="312" class="rail-summary-b">Possible exits (not delivered):</text>
+    <text x="1092" y="328" class="rail-summary">· short / partial refund</text>
+    <text x="1092" y="342" class="rail-summary">· substitute</text>
+    <text x="1092" y="356" class="rail-summary">· cancel / full refund</text>
+    <text x="1092" y="370" class="rail-summary">· reallocate jar to next order</text>
+    <text x="1092" y="384" class="rail-summary">· hold &amp; re-attempt</text>
+    <text x="1092" y="398" class="rail-summary">· restock / scrap</text>
+    <text x="1092" y="424" fill="#7F1D1D" font-size="10" font-style="italic">⚠ = step that can divert here</text>
+  </g>
+  <g>
+    <rect x="1080" y="500" width="240" height="100" rx="10" fill="#fff" stroke="#4F46E5" stroke-width="1.5"/>
+    <text x="1200" y="522" text-anchor="middle" fill="#3730A3" font-size="13" font-weight="700">PO state finding</text>
+    <text x="1092" y="542" font-size="10.5" fill="#0F172A">Partial-receipt status is ambiguous:</text>
+    <text x="1092" y="556" font-size="10.5" fill="#0F172A">"still receiving" vs "vendor short".</text>
+    <text x="1092" y="572" font-size="10.5" fill="#0F172A">No system distinction.</text>
+    <text x="1092" y="590" font-size="10.5" font-weight="700" fill="#7F1D1D">Manual close = known failure point.</text>
+  </g>
+  <g>
+    <rect x="1080" y="1600" width="240" height="88" rx="10" fill="#7F1D1D" stroke="#7F1D1D" stroke-width="2"/>
+    <text x="1200" y="1626" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">STEP 14 — Hold Engine</text>
+    <text x="1200" y="1646" text-anchor="middle" fill="#FEE2E2" font-size="11">at-pack misses become "H"</text>
+    <text x="1200" y="1662" text-anchor="middle" fill="#FEE2E2" font-size="11">runner fast-path bypasses scan</text>
+    <text x="1200" y="1680" text-anchor="middle" fill="#FBBF24" font-size="10.5" font-weight="700">→ open sub-flow diagram</text>
+  </g>
+  <g>
+    <rect x="1080" y="1928" width="240" height="80" rx="10" fill="#fff" stroke="#DC2626" stroke-width="1.5"/>
+    <text x="1200" y="1950" text-anchor="middle" fill="#7F1D1D" font-size="12" font-weight="700">Known metrics (likely undercounted)</text>
+    <text x="1200" y="1972" text-anchor="middle" fill="#7F1D1D" font-size="11">~1.5% boxes missing an item</text>
+    <text x="1200" y="1988" text-anchor="middle" fill="#7F1D1D" font-size="11">~0.5% boxes wrong</text>
+    <text x="1200" y="2002" text-anchor="middle" fill="#991B1B" font-size="9" font-style="italic">fast-path + bakery holds escape capture</text>
+  </g>
+  <g transform="translate(40, 2410)">
+    <rect x="0" y="0" width="1300" height="60" rx="8" fill="#fff" stroke="#CBD5E1"/>
+    <text x="14" y="20" font-size="12" font-weight="700" fill="#0F172A">Capture-reality encoding</text>
+    <rect x="14" y="30" width="22" height="18" fill="#fff" stroke="#0F172A" stroke-width="1.8"/><text x="42" y="44" font-size="11" fill="#0F172A">solid = in a system</text>
+    <rect x="190" y="30" width="22" height="18" fill="#fff" stroke="#0F172A" stroke-width="1.8" stroke-dasharray="4 3"/><text x="218" y="44" font-size="11" fill="#0F172A">dashed = off-system</text>
+    <rect x="420" y="30" width="22" height="18" fill="#FEF2F2" stroke="#DC2626" stroke-width="1.8" stroke-dasharray="4 3"/><text x="448" y="44" font-size="11" fill="#0F172A">red dashed = spreadsheet</text>
+    <rect x="640" y="30" width="22" height="18" fill="#DBEAFE" stroke="#2563EB" stroke-width="1.8"/><text x="654" y="44" font-size="11" fill="#2563EB" font-weight="700">✓</text><text x="668" y="44" font-size="11" fill="#0F172A">blue ✓ = scanned</text>
+    <rect x="860" y="30" width="22" height="18" fill="#DCFCE7" stroke="#16A34A" stroke-width="1.8"/><text x="888" y="44" font-size="11" fill="#0F172A">green = endpoint</text>
+    <text x="1000" y="44" font-size="13" font-weight="700" fill="#DC2626">⚠</text><text x="1014" y="44" font-size="11" fill="#0F172A">= can divert</text>
+  </g>
+</svg>
+
+
+
+    </div>
+    <div class="panel" id="panel-engine">
+      <svg id="engineSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+    <marker id="ar-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#DC2626"/>
+    </marker>
+    <marker id="ar-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#16A34A"/>
+    </marker>
+    <style>
+      .title { font-size: 22px; font-weight: 700; fill: #0F172A; }
+      .subtitle { font-size: 13px; fill: #475569; }
+      .node-t { font-size: 13px; font-weight: 700; fill: #0F172A; }
+      .node-s { font-size: 11px; fill: #334155; }
+      .edge-l { font-size: 11px; font-weight: 600; fill: #475569; }
+      .edge-warn { font-size: 11px; font-weight: 700; fill: #DC2626; }
+      .footnote { font-size: 11px; fill: #475569; }
+      .footnote-b { font-size: 11px; font-weight: 700; fill: #7F1D1D; }
+    </style>
+  </defs>
+
+  <!-- Title -->
+  <text x="40" y="40" class="title">Step 14 — Exception (Hold) Engine</text>
+  <text x="40" y="62" class="subtitle">What happens when an item is missing at pack. The fast-path is the structural cause of the metric undercount.</text>
+
+  <!-- Top section background -->
+  <rect x="0" y="86" width="1600" height="660" fill="#FAFAF9"/>
+
+  <!-- ============================================================
+       NODES
+       Row Y centers:
+         Top branch (fast path):   y ~ 260
+         Middle (entry chain):      y ~ 380
+         Lower branch (scan/route): y ~ 540
+         Lower-lower (JIT):         y ~ 660
+       ============================================================ -->
+
+  <!-- ENTRY: detect at pack (off-system, dashed amber) -->
+  <g>
+    <rect x="40" y="340" width="200" height="80" rx="10" fill="#FFFBEB" stroke="#D97706" stroke-width="2" stroke-dasharray="6 4"/>
+    <text x="140" y="368" text-anchor="middle" class="node-t">Pack: crate vs slip</text>
+    <text x="140" y="386" text-anchor="middle" class="node-t">→ item missing</text>
+    <text x="140" y="404" text-anchor="middle" class="node-s">off-system detection</text>
+  </g>
+
+  <!-- HOLD action (red) -->
+  <g>
+    <rect x="290" y="340" width="200" height="80" rx="10" fill="#FEE2E2" stroke="#DC2626" stroke-width="2"/>
+    <text x="390" y="368" text-anchor="middle" class="node-t">Write "H" on slip</text>
+    <text x="390" y="386" text-anchor="middle" class="node-t">HOLD + sideline</text>
+    <text x="390" y="404" text-anchor="middle" class="node-s">paper signal, no system event</text>
+  </g>
+
+  <!-- DECISION: runner knows where it is? (diamond) -->
+  <g>
+    <polygon points="640,330 740,380 640,430 540,380" fill="#fff" stroke="#0F172A" stroke-width="2"/>
+    <text x="640" y="372" text-anchor="middle" class="node-t">Runner</text>
+    <text x="640" y="390" text-anchor="middle" class="node-s">knows where it is</text>
+    <text x="640" y="406" text-anchor="middle" class="node-s">on the floor?</text>
+  </g>
+
+  <!-- FAST PATH (YES branch) — top route -->
+  <g>
+    <rect x="800" y="200" width="220" height="80" rx="10" fill="#FFFBEB" stroke="#D97706" stroke-width="2" stroke-dasharray="6 4"/>
+    <text x="910" y="228" text-anchor="middle" class="node-t">Fetch from floor</text>
+    <text x="910" y="246" text-anchor="middle" class="node-t">(fast path)</text>
+    <text x="910" y="264" text-anchor="middle" class="node-s">off-system  ·  no scan</text>
+  </g>
+
+  <!-- Fulfilled via fast path (green) -->
+  <g>
+    <rect x="1080" y="200" width="220" height="80" rx="10" fill="#DCFCE7" stroke="#16A34A" stroke-width="2.4"/>
+    <text x="1190" y="226" text-anchor="middle" fill="#14532D" font-size="13" font-weight="700">Fulfilled</text>
+    <text x="1190" y="246" text-anchor="middle" fill="#166534" font-size="11">box completed, rejoins happy path</text>
+    <text x="1190" y="266" text-anchor="middle" fill="#7F1D1D" font-size="10.5" font-weight="700">⚠ not captured anywhere</text>
+  </g>
+
+  <!-- HOLDS DESK SCAN (NO branch from decision) — the ONE formal capture (blue + ✓) -->
+  <g>
+    <rect x="800" y="500" width="220" height="80" rx="10" fill="#DBEAFE" stroke="#2563EB" stroke-width="2.4"/>
+    <text x="910" y="524" text-anchor="middle" fill="#1E3A8A" font-size="13" font-weight="700">Holds desk: SCAN ✓</text>
+    <text x="910" y="542" text-anchor="middle" fill="#1E3A8A" font-size="11">the one formal capture</text>
+    <text x="910" y="560" text-anchor="middle" fill="#1E3A8A" font-size="11">await direction</text>
+  </g>
+
+  <!-- BRANCH (a): Short/Sub spreadsheet (red dashed) -->
+  <g>
+    <rect x="1080" y="400" width="220" height="80" rx="10" fill="#FEF2F2" stroke="#DC2626" stroke-width="2" stroke-dasharray="6 4"/>
+    <text x="1190" y="426" text-anchor="middle" class="node-t">Short / Sub workflow</text>
+    <text x="1190" y="444" text-anchor="middle" fill="#7F1D1D" font-size="11" font-weight="600">spreadsheet (off-system tool)</text>
+    <text x="1190" y="462" text-anchor="middle" class="node-s">short = billed less · sub = swapped</text>
+  </g>
+
+  <!-- CX manually adjusts invoice (teal) -->
+  <g>
+    <rect x="1340" y="400" width="220" height="80" rx="10" fill="#CCFBF1" stroke="#0D9488" stroke-width="2.4"/>
+    <text x="1450" y="426" text-anchor="middle" fill="#134E4A" font-size="13" font-weight="700">CX manually adjusts</text>
+    <text x="1450" y="444" text-anchor="middle" fill="#134E4A" font-size="13" font-weight="700">the invoice</text>
+    <text x="1450" y="462" text-anchor="middle" fill="#134E4A" font-size="11">customer-side ledger fix</text>
+  </g>
+
+  <!-- Ship adjusted (green) — outcome of (a) -->
+  <g>
+    <rect x="1340" y="500" width="220" height="60" rx="10" fill="#DCFCE7" stroke="#16A34A" stroke-width="2.4"/>
+    <text x="1450" y="525" text-anchor="middle" fill="#14532D" font-size="13" font-weight="700">Ship adjusted</text>
+    <text x="1450" y="544" text-anchor="middle" fill="#166534" font-size="11">short or sub completed</text>
+  </g>
+
+  <!-- BRANCH (b): Hold for JIT inbound -->
+  <g>
+    <rect x="1080" y="600" width="220" height="80" rx="10" fill="#fff" stroke="#0F172A" stroke-width="2"/>
+    <text x="1190" y="626" text-anchor="middle" class="node-t">Hold for JIT inbound</text>
+    <text x="1190" y="644" text-anchor="middle" class="node-s">bread delivery, PO being unpacked</text>
+    <text x="1190" y="660" text-anchor="middle" class="node-s">window: same-day</text>
+  </g>
+
+  <!-- JIT arrives — Fulfilled late (green) -->
+  <g>
+    <rect x="1340" y="580" width="220" height="56" rx="10" fill="#DCFCE7" stroke="#16A34A" stroke-width="2.4"/>
+    <text x="1450" y="604" text-anchor="middle" fill="#14532D" font-size="13" font-weight="700">Arrives → fulfilled late</text>
+    <text x="1450" y="622" text-anchor="middle" fill="#166534" font-size="11">rejoins happy path</text>
+  </g>
+
+  <!-- JIT doesn't arrive — back to short/sub (red dashed) -->
+  <g>
+    <rect x="1340" y="650" width="220" height="56" rx="10" fill="#FEF2F2" stroke="#DC2626" stroke-width="2" stroke-dasharray="6 4"/>
+    <text x="1450" y="674" text-anchor="middle" class="node-t">Doesn't arrive</text>
+    <text x="1450" y="692" text-anchor="middle" fill="#7F1D1D" font-size="11">→ falls back to short / sub</text>
+  </g>
+
+  <!-- ============================================================
+       EDGES
+       ============================================================ -->
+  <g stroke="#475569" stroke-width="1.8" fill="none" marker-end="url(#ar)">
+    <!-- entry → HOLD -->
+    <line x1="240" y1="380" x2="285" y2="380"/>
+    <!-- HOLD → decision -->
+    <line x1="490" y1="380" x2="535" y2="380"/>
+    <!-- decision (YES, up) → fast path -->
+    <path d="M 640 330 L 640 240 L 795 240"/>
+    <!-- fast path → fulfilled -->
+    <line x1="1020" y1="240" x2="1075" y2="240"/>
+    <!-- decision (NO, down) → holds desk -->
+    <path d="M 640 430 L 640 540 L 795 540"/>
+    <!-- holds desk → short/sub workflow -->
+    <path d="M 1020 520 L 1050 520 L 1050 440 L 1075 440"/>
+    <!-- holds desk → hold for JIT -->
+    <path d="M 1020 560 L 1050 560 L 1050 640 L 1075 640"/>
+    <!-- short/sub → CX -->
+    <line x1="1300" y1="440" x2="1335" y2="440"/>
+    <!-- CX → ship adjusted -->
+    <path d="M 1450 480 L 1450 500"/>
+    <!-- JIT → arrives -->
+    <path d="M 1300 625 L 1320 625 L 1320 608 L 1335 608"/>
+    <!-- JIT → doesn't arrive -->
+    <path d="M 1300 655 L 1320 655 L 1320 678 L 1335 678"/>
+  </g>
+
+  <!-- Fast-path "unrecorded" label highlighted in red -->
+  <g stroke="#DC2626" stroke-width="1.8" stroke-dasharray="6 4" fill="none">
+    <!-- Overlay red dashed on the YES path -->
+    <path d="M 640 330 L 640 240 L 795 240" marker-end="url(#ar-red)"/>
+  </g>
+
+  <!-- Edge labels -->
+  <text x="660" y="280" class="edge-warn">YES</text>
+  <text x="746" y="232" class="edge-warn">not scanned · unrecorded</text>
+  <text x="660" y="478" class="edge-l">NO  /  not found</text>
+
+  <text x="1054" y="412" class="edge-l">short or sub</text>
+  <text x="1054" y="612" class="edge-l">JIT route</text>
+
+  <!-- Loop-back arrow: "doesn't arrive" → short/sub branch (dashed gray) -->
+  <g stroke="#94A3B8" stroke-width="1.4" stroke-dasharray="3 3" fill="none" marker-end="url(#ar)">
+    <path d="M 1340 692 L 1320 692 L 1320 740 L 1240 740 L 1240 440 L 1300 440"/>
+  </g>
+  <text x="1240" y="755" class="edge-l" text-anchor="middle" font-style="italic">falls back into short/sub</text>
+
+  <!-- ============================================================
+       SIDE PANELS: KEY FINDING + FOOTNOTES
+       ============================================================ -->
+
+  <!-- KEY FINDING banner (under decision) -->
+  <g>
+    <rect x="40" y="470" width="460" height="90" rx="10" fill="#FEF2F2" stroke="#DC2626" stroke-width="1.5"/>
+    <text x="56" y="492" font-size="13" font-weight="700" fill="#7F1D1D">Why the metrics undercount</text>
+    <text x="56" y="514" class="footnote">The fast-path (runner knows where it is) bypasses the holds-desk scan</text>
+    <text x="56" y="530" class="footnote">entirely. The scan is the only formal capture, so every fast-path save is</text>
+    <text x="56" y="546" class="footnote">invisible to the metric. Bakery-add holds (step 16) are similarly silent.</text>
+  </g>
+
+  <!-- Known metrics card -->
+  <g>
+    <rect x="40" y="600" width="460" height="100" rx="10" fill="#fff" stroke="#CBD5E1" stroke-width="1.2"/>
+    <text x="56" y="622" font-size="13" font-weight="700" fill="#0F172A">Known metrics  ·  source: holds-desk scan + short/sub spreadsheet</text>
+    <text x="56" y="646" class="footnote-b">~1.5%</text><text x="92" y="646" class="footnote">of boxes ship missing an item</text>
+    <text x="56" y="664" class="footnote-b">~0.5%</text><text x="92" y="664" class="footnote">of boxes ship wrong</text>
+    <text x="56" y="688" class="footnote" font-style="italic">Both numbers almost certainly understate the true error rate.</text>
+  </g>
+
+  <!-- Footnotes row at bottom -->
+  <g transform="translate(40, 760)">
+    <rect x="0" y="0" width="1520" height="110" rx="8" fill="#fff" stroke="#CBD5E1"/>
+    <text x="14" y="22" font-size="13" font-weight="700" fill="#0F172A">Footnotes</text>
+
+    <text x="14" y="46" class="footnote-b">·  The packing slip is never updated.</text>
+    <text x="14" y="62" class="footnote">It still shows the original (expected) order, so it cannot be used downstream as proof of what was actually shipped.</text>
+
+    <text x="14" y="84" class="footnote-b">·  Two parallel data trails get created when a hold happens:</text>
+    <text x="14" y="100" class="footnote">the holds-desk scan (system) and the short/sub spreadsheet (off-system). They are reconciled by hand in CX, not automatically.</text>
+
+    <text x="760" y="46" class="footnote-b">·  Fast-path = invisible recovery.</text>
+    <text x="760" y="62" class="footnote">When the runner finds the item, the box goes out correctly and no exception is recorded. Operationally great, analytically a blind spot.</text>
+
+    <text x="760" y="84" class="footnote-b">·  "Bakery holds" (step 16) are predictable and recurring.</text>
+    <text x="760" y="100" class="footnote">Because they resolve on the same shift, they almost never reach the holds desk — same bypass mechanism as the fast path.</text>
+  </g>
+
+  <!-- ============================================================
+       MINI LEGEND (top right)
+       ============================================================ -->
+  <g transform="translate(1180, 100)">
+    <rect x="0" y="0" width="380" height="80" rx="8" fill="#fff" stroke="#CBD5E1"/>
+    <text x="14" y="20" font-size="12" font-weight="700" fill="#0F172A">Encoding (matches main map)</text>
+
+    <rect x="14" y="32" width="18" height="14" fill="#fff" stroke="#0F172A" stroke-width="1.6" stroke-dasharray="3 2"/>
+    <text x="38" y="44" font-size="10.5" fill="#0F172A">off-system</text>
+
+    <rect x="114" y="32" width="18" height="14" fill="#DBEAFE" stroke="#2563EB" stroke-width="1.6"/>
+    <text x="138" y="44" font-size="10.5" fill="#0F172A">scanned ✓</text>
+
+    <rect x="214" y="32" width="18" height="14" fill="#FEF2F2" stroke="#DC2626" stroke-width="1.6" stroke-dasharray="3 2"/>
+    <text x="238" y="44" font-size="10.5" fill="#0F172A">spreadsheet</text>
+
+    <rect x="14" y="56" width="18" height="14" fill="#CCFBF1" stroke="#0D9488" stroke-width="1.6"/>
+    <text x="38" y="68" font-size="10.5" fill="#0F172A">CX / billing</text>
+
+    <rect x="114" y="56" width="18" height="14" fill="#DCFCE7" stroke="#16A34A" stroke-width="1.6"/>
+    <text x="138" y="68" font-size="10.5" fill="#0F172A">endpoint</text>
+
+    <rect x="214" y="56" width="18" height="14" fill="#FEE2E2" stroke="#DC2626" stroke-width="1.6"/>
+    <text x="238" y="68" font-size="10.5" fill="#0F172A">hold action</text>
+  </g>
+</svg>
+
+
+
+    </div>
+  </section>
+
+  <aside class="side" id="side">
+    <h3>Step detail</h3>
+    <div class="muted">Click a step in the diagram. Hover for a quick preview.</div>
+    <div id="detail" style="margin-top: 12px;">
+      <div class="row">
+        <div class="k">Headline</div>
+        <div class="v">The warehouse is nearly all off-system. Its only in-system touchpoint is <b>step 6</b> (purchase receipt). That single capture is the reason inventory is even derivable.</div>
+      </div>
+      <div class="row">
+        <div class="k">Time gates</div>
+        <div class="v"><b>12pm</b> charge · <b>5pm</b> route + prepick list · <b>8pm</b> stop assignment + slip</div>
+      </div>
+      <div class="row">
+        <div class="k">Exception model</div>
+        <div class="v">Any ⚠ step can divert into the right-rail exception state, carrying a reason and timestamp, and exiting at: short / substitute / cancel / reallocate / hold &amp; re-attempt / restock.</div>
+      </div>
+      <div class="row">
+        <div class="k">Known metrics</div>
+        <div class="v">~1.5% boxes ship missing an item · ~0.5% wrong. Both are likely undercounts — the fast-path and bakery-add holds bypass the scan.</div>
+      </div>
+    </div>
+    <div class="actions">
+      <a href="jar_of_jam_swimlane.svg" target="_blank">Open swimlane SVG</a>
+      <a href="jar_step14_exception_engine.svg" target="_blank">Open engine SVG</a>
+    </div>
+  </aside>
+</main>
+
+<script>
+const STEPS = {
+  1:  { title: "Decide to sell a Jar of Jam", lane: "ERP / Procurement", capture: "off", warn: false, owner: "Product / Procurement", note: "Off-system product decision. Triggers vendor onboarding." },
+  2:  { title: "Find + create vendor in ERP",  lane: "ERP / Procurement", capture: "system", warn: false, owner: "Procurement (Sophia)", note: "Master record. Vendor must exist before a PO can be drafted." },
+  3:  { title: "Draft PO + delivery date · PO state lifecycle", lane: "ERP / Procurement", capture: "system", warn: true,  owner: "Procurement (Sophia, Roger)", note: "PO passes through Draft → Submitted → To Receive & Bill → To Bill → Closed. Flags on Draft control availability TIMING — not just visibility: Include=Y makes the jar live at the stock-by date (pre-arrival sale); Exclude (default) makes it available ~24h AFTER receipt, because of the customer shopping-window lag. Partial receipts are ambiguous; closing the PO is manual — both are known failure points. See jar_po_states_writeup.md." },
+  4:  { title: "PO arrives at warehouse",      lane: "Warehouse",         capture: "off", warn: true,  owner: "Warehouse (Jack)", note: "No system event on arrival. Vendor / driver hands paperwork." },
+  5:  { title: "Sits on receiving dock",       lane: "Warehouse",         capture: "off", warn: true,  owner: "Warehouse (Jack)", note: "No check-in. Time spent here is invisible to inventory." },
+  6:  { title: "Count full PO → purchase receipt", lane: "Warehouse → ERP", capture: "system", warn: true, owner: "Warehouse → ERP (Jack)", note: "★ The only warehouse↔system touchpoint. Full receipt auto-advances to \"To Bill\". Partial receipt leaves PO in \"To Receive & Bill\" and requires manual close. See PO state lifecycle in the ERP lane." },
+  7:  { title: "Moved to area, left on pallet", lane: "Warehouse",        capture: "off", warn: false, owner: "Warehouse (Jonathan)", note: "Space-driven. Pallet location lives in heads, not in the system." },
+  8:  { title: "Restock into a location (if time)", lane: "Warehouse",   capture: "off", warn: true,  owner: "Warehouse (Jonathan, Jack)", note: "Hybrid — home slot is known in the system, but there is no prompt or completion confirmation. ~50% put away ahead." },
+  9:  { title: "Customer adds jar to order",   lane: "FtP Website",       capture: "system", warn: true, owner: "Website (Toby) / Customer", note: "Hard reserve at confirm. One-time OR recurring. Open item: ERP-master vs web-local, recurring reservation timing." },
+  10: { title: "Customer charged",             lane: "FtP Website",       capture: "system", warn: true, owner: "Website (Toby) · 12pm gate", note: "Day before ship. Open item: charge-decline handling + reallocation speed." },
+  11: { title: "Route A–ZZZ + prepick list",   lane: "Onfleet / Delivery", capture: "system", warn: false, owner: "ERP → Onfleet (Thurman, Toby) · 5pm gate", note: "ERP-generated list. Location included where known. Open item: route (ERP) vs stop (Onfleet) source of truth." },
+  12: { title: "Pre-pick: locate → route bin", lane: "Warehouse",         capture: "off", warn: true,  owner: "Warehouse (Jack)", note: "Off-system. A miss generates paper + inconsistent Slack; nothing recorded systemically." },
+  13: { title: "Assign stop 1–50 · slip + label", lane: "Onfleet / Delivery", capture: "system", warn: false, owner: "Onfleet (Thurman) · 8pm gate", note: "System-generated, but the printed slip = expected order (blind to what prepick actually staged)." },
+  14: { title: "Pick to crate · match Route+Stop · missing -> H", lane: "Warehouse", capture: "off", warn: true, owner: "Warehouse (Jack) -> Holds desk", note: "Detection point for the Hold Engine. The H written on the slip is the only physical breadcrumb." },
+  15: { title: "Crate → box · produce via PTL", lane: "Warehouse",       capture: "off", warn: false, owner: "Warehouse (Jonathan, PTL crew)", note: "Open item: whether PTL logs are usable downstream." },
+  16: { title: "Add bakery items / flowers",   lane: "Warehouse",         capture: "off", warn: true,  owner: "Warehouse (Jonathan)", note: "Predictable unrecorded holds — bakery deliveries land mid-shift and the misses get resolved silently." },
+  17: { title: "Seal + mark shipped",          lane: "Warehouse",         capture: "sheet", warn: true, owner: "Warehouse → spreadsheet", note: "Red dashed: only record is a double-box spreadsheet. Not in any system of record." },
+  18: { title: "Driver loads boxes",           lane: "Onfleet / Delivery", capture: "system", warn: false, owner: "Onfleet (Mitch)", note: "Boxes are matched to assignments in Onfleet at load." },
+  19: { title: "Driver marks delivered",       lane: "Onfleet / Delivery", capture: "system", warn: true, owner: "Onfleet → ERP (Thurman)", note: "Onfleet → ERP feed. Open item: confirm live API + payload contents." },
+  20: { title: "Delivered — jam on toast",     lane: "Endpoint",          capture: "endpoint", warn: false, owner: "Customer", note: "Happy-path endpoint. The other exits (short, sub, refund, etc.) leave from the exception rail." }
+};
+
+// Tab switching
+document.querySelectorAll(".tab").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    const tab = btn.dataset.tab;
+    document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+    document.getElementById("panel-" + tab).classList.add("active");
+  });
+});
+
+// Wire up step interactivity directly on the inlined swim SVG
+const swimSvg = document.getElementById("swimSvg");
+const stepGroups = {};
+if (swimSvg) {
+  swimSvg.querySelectorAll("g").forEach(g => {
+    const numText = g.querySelector("text.step-num");
+    if (numText) {
+      const n = parseInt(numText.textContent.trim(), 10);
+      if (!isNaN(n) && n >= 1 && n <= 20) {
+        stepGroups[n] = g;
+        g.classList.add("step");
+        g.setAttribute("data-step", n);
+        const meta = STEPS[n];
+        if (meta) {
+          const ttl = document.createElementNS("http://www.w3.org/2000/svg", "title");
+          ttl.textContent = "Step " + n + ": " + meta.title;
+          g.insertBefore(ttl, g.firstChild);
+        }
+        g.addEventListener("click", (e) => {
+          e.stopPropagation();
+          Object.values(stepGroups).forEach(x => x.classList.remove("selected"));
+          g.classList.add("selected");
+          renderDetail(n);
+        });
+      }
+    }
+  });
+}
+
+// Filter chips
+document.querySelectorAll("#toolbar .chip").forEach(chip => {
+  chip.addEventListener("click", () => {
+    const f = chip.dataset.filter;
+    if (f === "reset") {
+      document.querySelectorAll("#toolbar .chip").forEach(c => c.classList.remove("active"));
+      Object.values(stepGroups).forEach(g => g.classList.remove("dimmed"));
+      return;
+    }
+    chip.classList.toggle("active");
+    applyFilters();
+  });
+});
+
+function applyFilters() {
+  const active = Array.from(document.querySelectorAll("#toolbar .chip.active"))
+                      .map(c => c.dataset.filter)
+                      .filter(f => f !== "reset");
+  if (active.length === 0) {
+    Object.values(stepGroups).forEach(g => g.classList.remove("dimmed"));
+    return;
+  }
+  Object.entries(stepGroups).forEach(([n, g]) => {
+    const meta = STEPS[n];
+    const matches = active.some(f => {
+      if (f === "warn") return meta.warn;
+      return meta.capture === f;
+    });
+    g.classList.toggle("dimmed", !matches);
+  });
+}
+
+function renderDetail(n) {
+  const meta = STEPS[n];
+  if (!meta) return;
+  const captureLabel = {
+    system: ["in-system", "system"],
+    off: ["off-system", "off"],
+    sheet: ["spreadsheet only", "sheet"],
+    scan: ["scanned ✓", "scan"],
+    endpoint: ["endpoint", "endpoint"]
+  }[meta.capture] || ["unknown", ""];
+
+  const detail = document.getElementById("detail");
+  detail.innerHTML =
+    `<div class="row"><div class="k">Step ${n}</div><div class="v" style="font-weight:700;font-size:14px;">${meta.title}</div></div>` +
+    `<div class="row"><div class="k">Lane</div><div class="v">${meta.lane}</div></div>` +
+    `<div class="row"><div class="k">Capture</div><div class="v"><span class="pill ${captureLabel[1]}">${captureLabel[0]}</span>${meta.warn ? ' <span class="pill warn">⚠ can divert</span>' : ''}</div></div>` +
+    `<div class="row"><div class="k">Owner</div><div class="v">${meta.owner}</div></div>` +
+    `<div class="row"><div class="k">Note</div><div class="v">${meta.note}</div></div>`;
+}
+</script>
+
+</body>
+</html>

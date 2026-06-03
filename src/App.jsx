@@ -545,187 +545,14 @@ function ExecSummary({ stats }) {
   );
 }
 
-function Productivity() {
-  const mono = "'JetBrains Mono',monospace";
-  const COLOR = "#14b8a6";
-
-  const DEFAULTS = {
-    baselineOPH: 50,
-    improvedOPH: 75,
-    wagePerHour: 20,
-    aov: 100,
-    laborPct: 10,
-    laborPctReduction: 1,
-    boxes: 100,
-  };
-
-  const [i, setI] = useState(DEFAULTS);
-  const set = (k, v) => setI(p => ({ ...p, [k]: v === "" ? "" : +v }));
-  const reset = () => setI(DEFAULTS);
-
-  const wage = +i.wagePerHour || 0;
-  const aov = +i.aov || 0;
-  const baseOPH = +i.baselineOPH || 0;
-  const newOPH = +i.improvedOPH || 0;
-  const pctRed = (+i.laborPctReduction || 0) / 100;
-  const boxes = +i.boxes || 0;
-
-  const baseLaborPerBox = baseOPH > 0 ? wage / baseOPH : 0;
-  const newLaborPerBox = newOPH > 0 ? wage / newOPH : 0;
-  const speedSavingsPerBox = baseLaborPerBox - newLaborPerBox;
-  const pctSavingsPerBox = pctRed * aov;
-  const combinedPerBox = speedSavingsPerBox + pctSavingsPerBox;
-
-  const speedSavingsTotal = speedSavingsPerBox * boxes;
-  const pctSavingsTotal = pctSavingsPerBox * boxes;
-  const combinedTotal = combinedPerBox * boxes;
-
-  const fmtUSD = (v) => {
-    if (v == null || !isFinite(v)) return "—";
-    return "$" + (+v).toFixed(2);
-  };
-  const fmtBig = (v) => {
-    if (v == null || !isFinite(v)) return "—";
-    if (Math.abs(v) >= 1_000_000) return "$" + (v / 1_000_000).toFixed(2) + "M";
-    if (Math.abs(v) >= 10_000) return "$" + (v / 1_000).toFixed(1) + "K";
-    return "$" + (+v).toLocaleString(undefined, { maximumFractionDigits: 2 });
-  };
-  const fmtInt = (v) => v == null || !isFinite(v) ? "—" : Math.round(v).toLocaleString();
-
-  const inputDefs = [
-    { key: "baselineOPH",        label: "Baseline Orders / Hour", step: 1,   suffix: "orders/hr" },
-    { key: "improvedOPH",        label: "Improved Orders / Hour", step: 1,   suffix: "orders/hr" },
-    { key: "wagePerHour",        label: "Labor Wage / Hour",      step: 0.5, prefix: "$" },
-    { key: "aov",                label: "AOV per Box",            step: 1,   prefix: "$" },
-    { key: "laborPct",           label: "Current Labor %",        step: 0.5, suffix: "%" },
-    { key: "laborPctReduction",  label: "Labor % Reduction",      step: 0.25, suffix: "pts" },
-  ];
-
-  const inputStyle = {
-    background: "#111114", border: "1px solid #27272a", borderRadius: 6,
-    padding: "8px 10px", color: "#fafafa", fontSize: 14, fontFamily: mono,
-    width: "100%", outline: "none", boxSizing: "border-box",
-  };
-
-  const presetBoxes = [10, 100, 1000, 10000];
-
+function ProcessMap() {
   return (
-    <div style={{ padding: "16px 24px" }}>
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: "#fafafa" }}>Per-Box Savings Calculator</div>
-        <div style={{ fontSize: 11, color: "#52525b", marginTop: 2 }}>
-          Two levers: pick speed (orders/hour) and a labor-% reduction. See savings per box, then scale by box volume.
-        </div>
-      </div>
-
-      <div style={{ background: "#0c0c0f", border: "1px solid #1c1c22", borderRadius: 10, padding: 16, marginBottom: 16 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
-          <div style={{ fontSize: 10, color: COLOR, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, fontFamily: mono }}>Inputs</div>
-          <button onClick={reset} style={{
-            background: "transparent", border: "1px solid #27272a", color: "#a1a1aa",
-            borderRadius: 6, padding: "4px 10px", fontSize: 10, cursor: "pointer", fontFamily: mono,
-          }}>Reset to defaults</button>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
-          {inputDefs.map(d => (
-            <label key={d.key} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <span style={{ fontSize: 10, color: "#71717a", textTransform: "uppercase", letterSpacing: 1, fontFamily: mono }}>{d.label}</span>
-              <div style={{ position: "relative" }}>
-                {d.prefix && <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#52525b", fontSize: 13, fontFamily: mono, pointerEvents: "none" }}>{d.prefix}</span>}
-                <input type="number" value={i[d.key]} step={d.step} min={0}
-                  onChange={(e) => set(d.key, e.target.value)}
-                  style={{ ...inputStyle, paddingLeft: d.prefix ? 22 : 10 }} />
-                {d.suffix && <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "#3f3f46", fontSize: 10, fontFamily: mono, pointerEvents: "none" }}>{d.suffix}</span>}
-              </div>
-            </label>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12, marginBottom: 16 }}>
-        <div style={{ background: "#111114", border: "1px solid #38bdf833", borderRadius: 10, padding: 16 }}>
-          <div style={{ fontSize: 10, color: "#38bdf8", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, fontFamily: mono }}>Speed Improvement</div>
-          <div style={{ fontSize: 11, color: "#52525b", marginTop: 2, marginBottom: 12 }}>
-            {fmtInt(baseOPH)} → {fmtInt(newOPH)} orders/hour at {fmtUSD(wage)}/hr wage
-          </div>
-          <div style={{ display: "flex", gap: 16, marginBottom: 10, fontSize: 11, color: "#a1a1aa", fontFamily: mono }}>
-            <div><span style={{ color: "#52525b" }}>Now:</span> {fmtUSD(baseLaborPerBox)}/box</div>
-            <div><span style={{ color: "#52525b" }}>After:</span> {fmtUSD(newLaborPerBox)}/box</div>
-          </div>
-          <div style={{ fontSize: 10, color: "#71717a", fontFamily: mono, textTransform: "uppercase", letterSpacing: 1 }}>Savings / box</div>
-          <div style={{ fontSize: 36, fontWeight: 700, fontFamily: mono, color: speedSavingsPerBox >= 0 ? "#22c55e" : "#ef4444", lineHeight: 1.1 }}>{fmtUSD(speedSavingsPerBox)}</div>
-        </div>
-
-        <div style={{ background: "#111114", border: "1px solid #a78bfa33", borderRadius: 10, padding: 16 }}>
-          <div style={{ fontSize: 10, color: "#a78bfa", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, fontFamily: mono }}>Labor % Reduction</div>
-          <div style={{ fontSize: 11, color: "#52525b", marginTop: 2, marginBottom: 12 }}>
-            {(+i.laborPctReduction).toFixed(2)}pt reduction on a {fmtUSD(aov)} box
-          </div>
-          <div style={{ display: "flex", gap: 16, marginBottom: 10, fontSize: 11, color: "#a1a1aa", fontFamily: mono }}>
-            <div><span style={{ color: "#52525b" }}>Now:</span> {fmtUSD(((+i.laborPct) / 100) * aov)}/box</div>
-            <div><span style={{ color: "#52525b" }}>After:</span> {fmtUSD(((+i.laborPct - +i.laborPctReduction) / 100) * aov)}/box</div>
-          </div>
-          <div style={{ fontSize: 10, color: "#71717a", fontFamily: mono, textTransform: "uppercase", letterSpacing: 1 }}>Savings / box</div>
-          <div style={{ fontSize: 36, fontWeight: 700, fontFamily: mono, color: pctSavingsPerBox >= 0 ? "#22c55e" : "#ef4444", lineHeight: 1.1 }}>{fmtUSD(pctSavingsPerBox)}</div>
-        </div>
-
-        <div style={{ background: "#111114", border: `2px solid ${COLOR}66`, borderRadius: 10, padding: 16 }}>
-          <div style={{ fontSize: 10, color: COLOR, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, fontFamily: mono }}>Combined</div>
-          <div style={{ fontSize: 11, color: "#52525b", marginTop: 2, marginBottom: 12 }}>Both levers applied</div>
-          <div style={{ display: "flex", gap: 16, marginBottom: 10, fontSize: 11, color: "#a1a1aa", fontFamily: mono }}>
-            <div><span style={{ color: "#52525b" }}>Speed:</span> {fmtUSD(speedSavingsPerBox)}</div>
-            <div><span style={{ color: "#52525b" }}>Labor %:</span> {fmtUSD(pctSavingsPerBox)}</div>
-          </div>
-          <div style={{ fontSize: 10, color: "#71717a", fontFamily: mono, textTransform: "uppercase", letterSpacing: 1 }}>Total savings / box</div>
-          <div style={{ fontSize: 40, fontWeight: 700, fontFamily: mono, color: combinedPerBox >= 0 ? "#22c55e" : "#ef4444", lineHeight: 1.1 }}>{fmtUSD(combinedPerBox)}</div>
-        </div>
-      </div>
-
-      <div style={{ background: "#0c0c0f", border: `1px solid ${COLOR}44`, borderRadius: 10, padding: 16, marginBottom: 16 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
-          <div>
-            <div style={{ fontSize: 10, color: COLOR, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, fontFamily: mono }}>Volume Multiplier</div>
-            <div style={{ fontSize: 11, color: "#52525b", marginTop: 2 }}>Total savings at this number of boxes.</div>
-          </div>
-          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-            {presetBoxes.map(p => (
-              <button key={p} onClick={() => set("boxes", p)} style={{
-                background: boxes === p ? COLOR + "33" : "transparent",
-                border: `1px solid ${boxes === p ? COLOR : "#27272a"}`,
-                color: boxes === p ? COLOR : "#a1a1aa",
-                borderRadius: 6, padding: "4px 10px", fontSize: 10, cursor: "pointer", fontFamily: mono, fontWeight: 600,
-              }}>{fmtInt(p)}</button>
-            ))}
-            <div style={{ position: "relative" }}>
-              <input type="number" value={i.boxes} step={1} min={0}
-                onChange={(e) => set("boxes", e.target.value)}
-                style={{ ...inputStyle, width: 120, paddingRight: 38, fontSize: 13, padding: "6px 10px" }} />
-              <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "#3f3f46", fontSize: 10, fontFamily: mono, pointerEvents: "none" }}>boxes</span>
-            </div>
-          </div>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10, marginTop: 12 }}>
-          {[
-            { label: "Speed savings",   value: fmtBig(speedSavingsTotal), sub: `${fmtUSD(speedSavingsPerBox)}/box × ${fmtInt(boxes)} boxes`, color: "#38bdf8" },
-            { label: "Labor % savings", value: fmtBig(pctSavingsTotal),   sub: `${fmtUSD(pctSavingsPerBox)}/box × ${fmtInt(boxes)} boxes`,   color: "#a78bfa" },
-            { label: "Combined total",  value: fmtBig(combinedTotal),     sub: `${fmtUSD(combinedPerBox)}/box × ${fmtInt(boxes)} boxes`,     color: COLOR, big: true },
-          ].map((c, idx) => (
-            <div key={idx} style={{ background: "#111114", borderRadius: 10, padding: 14, border: `1px solid ${c.color}33` }}>
-              <div style={{ fontSize: 10, color: c.color, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, fontFamily: mono }}>{c.label}</div>
-              <div style={{ fontSize: c.big ? 30 : 24, fontWeight: 700, fontFamily: mono, color: "#fafafa", marginTop: 6, lineHeight: 1.1 }}>{c.value}</div>
-              <div style={{ fontSize: 10, color: "#52525b", marginTop: 4, fontFamily: mono }}>{c.sub}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ background: "#0c0c0f", borderRadius: 8, padding: 12, border: "1px solid #1c1c22", fontSize: 10, color: "#71717a", lineHeight: 1.8, fontFamily: mono }}>
-        <div style={{ color: "#a1a1aa", fontWeight: 700, marginBottom: 4 }}>Formulas</div>
-        <div>Labor $ / box = Wage ÷ Orders per Hour</div>
-        <div>Speed savings / box = (Wage ÷ Baseline OPH) − (Wage ÷ Improved OPH)</div>
-        <div>Labor % savings / box = Reduction × AOV  ·  (e.g. 1% × $100 = $1.00)</div>
-        <div>Total savings = (Savings / box) × Boxes</div>
-      </div>
+    <div style={{ background: "#FAFAF9", height: "calc(100vh - 88px)", overflow: "hidden" }}>
+      <iframe
+        src="/process-map.html"
+        title="Jar of Jam Process Map"
+        style={{ width: "100%", height: "100%", border: "none", display: "block" }}
+      />
     </div>
   );
 }
@@ -792,7 +619,7 @@ export default function App() {
           {[
             {id:"summary",label:"Summary",color:"#a78bfa"},
             {id:"basket",label:"Basket Cost",color:"#ec4899"},
-            {id:"productivity",label:"Productivity",color:"#14b8a6"},
+            {id:"processmap",label:"Process Map",color:"#4F46E5"},
             {id:"compare",label:"Comparison",count:DATA.length},
             {id:"psfc",label:"PSFC",count:PSFC.length,color:RC.PSFC},
             {id:"ftp",label:"FTP",count:FTP.length,color:RC.FTP},
@@ -941,7 +768,7 @@ export default function App() {
       </>}
       {tab === "summary" && <ExecSummary stats={stats} />}
       {tab === "basket" && <BasketCost />}
-      {tab === "productivity" && <Productivity />}
+      {tab === "processmap" && <ProcessMap />}
       {tab === "psfc" && <RetailerList data={PSFC} search={search} color={RC.PSFC} name={`Park Slope Food Coop — ${PSFC.length} items · Daily Price List March 27, 2026`} />}
       {tab === "ftp" && <RetailerList data={FTP} search={search} color={RC.FTP} name={`Farm to People — ${FTP.length} items · Logged-in prices March 27, 2026`} />}
       {tab === "fd" && <RetailerList data={FD} search={search} color={RC.FD} name={`FreshDirect — ${FD.length} items · Search prices March 28, 2026`} />}
