@@ -559,13 +559,27 @@ function ProcessMap() {
 
 function Home({ goto }) {
   const mono = "'JetBrains Mono',monospace";
-  const ACCENT = "#14b8a6";
+  const ACCENT = "#4F46E5";
 
   const cards = [
     {
-      eyebrow: "March 2026 · live data",
+      eyebrow: "Primary diagnostic artifact",
+      title: "Jar of Jam — Lifecycle Map",
+      desc: "End-to-end path of a single SKU from purchase order to delivered box. Of twenty steps across five lanes, exactly one is captured by the system of record. The map makes visible where physical reality and the ERP's model of it drift apart — which is the upstream source of most of what surfaces as inventory accuracy downstream.",
+      stats: [
+        { k: "steps", v: "20" },
+        { k: "lanes", v: "5" },
+        { k: "in-system", v: "1" },
+      ],
+      cta: "Open process map",
+      section: "processmap",
+      accent: "#4F46E5",
+      primary: true,
+    },
+    {
+      eyebrow: "Companion analysis",
       title: "Produce Pricing Comparison",
-      desc: "Side-by-side prices across Park Slope Food Coop, Farm to People, and FreshDirect. 360+ items normalized for unit and organic status to expose dollar and percentage gaps — and to quantify the FTP premium as a dollar-weighted average.",
+      desc: "Side-by-side prices across Park Slope Food Coop, Farm to People, and FreshDirect. 360+ items normalized for unit and organic status to expose dollar and percentage gaps — and to quantify the FTP premium as a dollar-weighted average against what a Brooklyn customer can buy elsewhere.",
       stats: [
         { k: "items", v: `${DATA.length}` },
         { k: "retailers", v: "3" },
@@ -575,42 +589,32 @@ function Home({ goto }) {
       section: "pricing",
       accent: "#a78bfa",
     },
-    {
-      eyebrow: "Capture-reality view",
-      title: "Jar of Jam — Lifecycle Map",
-      desc: "The end-to-end path of a single SKU through procurement, warehouse, website, and delivery. 20 steps across 5 lanes, with an exception engine — making visible which steps are captured in a system and which leak.",
-      stats: [
-        { k: "steps", v: "20" },
-        { k: "lanes", v: "5" },
-        { k: "off-system", v: "10" },
-      ],
-      cta: "Open process map",
-      section: "processmap",
-      accent: "#4F46E5",
-    },
   ];
 
   return (
     <div style={{ background: "#09090b", color: "#e4e4e7", minHeight: "calc(100vh - 64px)" }}>
       <section style={{ maxWidth: 1100, margin: "0 auto", padding: "96px 32px 56px" }}>
         <div style={{ fontSize: 11, color: ACCENT, fontFamily: mono, letterSpacing: 2.5, textTransform: "uppercase", marginBottom: 24, fontWeight: 600 }}>
-          Farm to People · Independent work
+          Farm to People · Warehouse Operations Diagnostic
         </div>
         <h1 style={{ fontSize: "clamp(36px, 5vw, 56px)", fontWeight: 700, lineHeight: 1.05, margin: 0, color: "#fafafa", maxWidth: 880, letterSpacing: -1.5 }}>
-          Tools to make the pricing landscape and the operations behind it legible.
+          Making the operating layer underneath the consumer business legible — before the mid-July split.
         </h1>
-        <p style={{ fontSize: 17, color: "#a1a1aa", lineHeight: 1.55, marginTop: 28, maxWidth: 720 }}>
-          A contract collaboration with Farm to People. Two artifacts so far — a competitive pricing analysis against the produce a customer can buy elsewhere in Brooklyn, and a process map tracing a single SKU from receiving dock to doorstep.
+        <p style={{ fontSize: 17, color: "#a1a1aa", lineHeight: 1.55, marginTop: 28, maxWidth: 760 }}>
+          Ten days on the floor surfaced an architectural pattern: the warehouse runs better than its instrumentation would predict because the team has built an informal layer that papers over the places the system of record does not extend. That layer holds at one site. It does not survive a second one ten minutes away.
+        </p>
+        <p style={{ fontSize: 15, color: "#71717a", lineHeight: 1.6, marginTop: 14, maxWidth: 760 }}>
+          The process map is the artifact the diagnostic is built on. The pricing analysis is a companion piece on the consumer side of the same business.
         </p>
         <div style={{ display: "flex", gap: 10, marginTop: 36, flexWrap: "wrap" }}>
-          <button onClick={() => goto("pricing")} style={{
+          <button onClick={() => goto("processmap")} style={{
             background: "#fafafa", color: "#09090b", border: "none", padding: "12px 20px",
             borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
-          }}>View pricing analysis →</button>
-          <button onClick={() => goto("processmap")} style={{
+          }}>Open process map →</button>
+          <button onClick={() => goto("pricing")} style={{
             background: "transparent", color: "#e4e4e7", border: "1px solid #3f3f46", padding: "12px 20px",
             borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
-          }}>Open process map →</button>
+          }}>View pricing analysis →</button>
         </div>
       </section>
 
@@ -623,20 +627,22 @@ function Home({ goto }) {
             <div key={i} onClick={() => goto(c.section)} role="button" tabIndex={0}
               onKeyDown={(e) => { if (e.key === "Enter") goto(c.section); }}
               style={{
-                background: "#111114", border: "1px solid #1f1f23", borderRadius: 14,
+                background: "#111114",
+                border: `1px solid ${c.primary ? c.accent + "55" : "#1f1f23"}`,
+                borderRadius: 14,
                 padding: 28, cursor: "pointer", transition: "all 0.2s ease",
                 display: "flex", flexDirection: "column", position: "relative", overflow: "hidden",
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = c.accent + "66";
+                e.currentTarget.style.borderColor = c.accent + "99";
                 e.currentTarget.style.transform = "translateY(-2px)";
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "#1f1f23";
+                e.currentTarget.style.borderColor = c.primary ? c.accent + "55" : "#1f1f23";
                 e.currentTarget.style.transform = "translateY(0)";
               }}
             >
-              <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: c.accent, opacity: 0.6 }} />
+              <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: c.primary ? 4 : 3, background: c.accent, opacity: c.primary ? 0.9 : 0.6 }} />
               <div style={{ fontSize: 10, color: c.accent, fontFamily: mono, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 12, fontWeight: 600 }}>
                 {c.eyebrow}
               </div>
@@ -667,28 +673,32 @@ function Home({ goto }) {
         <div style={{ maxWidth: 1100, margin: "0 auto", padding: "48px 32px 64px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 32 }}>
           <div>
             <div style={{ fontSize: 10, color: "#52525b", fontFamily: mono, letterSpacing: 2, textTransform: "uppercase", marginBottom: 12, fontWeight: 600 }}>
-              What this is
+              Frame
             </div>
             <p style={{ fontSize: 13, color: "#a1a1aa", lineHeight: 1.7, margin: 0 }}>
-              A working space for the Farm to People engagement. Both pieces above are live, interactive web apps — not slides or PDFs. The intent is to keep adding tools as questions surface.
+              The inventory accuracy issue is real, the staffing and space constraints are real, and they are symptoms of something one layer deeper: an operating layer that lives almost entirely outside the system of record.
             </p>
           </div>
           <div>
             <div style={{ fontSize: 10, color: "#52525b", fontFamily: mono, letterSpacing: 2, textTransform: "uppercase", marginBottom: 12, fontWeight: 600 }}>
-              Built with
+              Forcing function
             </div>
             <p style={{ fontSize: 13, color: "#a1a1aa", lineHeight: 1.7, margin: 0 }}>
-              React, Vite, SVG. Deployed on Vercel. Source data refreshed manually as of March 2026.
+              The mid-July launch of warehouse 2 is a structural change to the operating environment, not just a capacity decision. The informal layer that papers over the gaps today is the thing that breaks first when inventory splits across two sites.
             </p>
           </div>
           <div>
             <div style={{ fontSize: 10, color: "#52525b", fontFamily: mono, letterSpacing: 2, textTransform: "uppercase", marginBottom: 12, fontWeight: 600 }}>
-              Next
+              Shape of the work
             </div>
             <p style={{ fontSize: 13, color: "#a1a1aa", lineHeight: 1.7, margin: 0 }}>
-              Productivity modeling, exception capture, and reconciliation tooling are all candidates. Tell me where the next leverage point is.
+              Not a full operating system — that is a multi-year build. The minimum viable kernel that lets two sites stand up in mid-July, designed so every piece is foundation for what comes next rather than something to be thrown away.
             </p>
           </div>
+        </div>
+        <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 32px 56px", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12, fontFamily: mono, fontSize: 11, color: "#52525b" }}>
+          <div>Prepared by Jordan Benkov · For Farm to People leadership</div>
+          <div>Engagement window: June 8 – July 10, 2026</div>
         </div>
       </section>
     </div>
@@ -696,7 +706,7 @@ function Home({ goto }) {
 }
 
 export default function App() {
-  const [section, setSection] = useState("home");
+  const [section, setSection] = useState("processmap");
   const [tab, setTab] = useState("summary");
   const [search, setSearch] = useState("");
   const [selectedCat, setSelectedCat] = useState("All");
@@ -749,9 +759,9 @@ export default function App() {
   const s = { fontFamily:"'DM Sans','Helvetica Neue',sans-serif" };
 
   const sections = [
-    { id: "home",       label: "Home" },
-    { id: "pricing",    label: "Pricing Analysis" },
     { id: "processmap", label: "Process Map" },
+    { id: "pricing",    label: "Pricing Analysis" },
+    { id: "home",       label: "Overview" },
   ];
 
   return (
@@ -764,7 +774,7 @@ export default function App() {
         padding:"14px 24px",
         display:"flex", alignItems:"center", justifyContent:"space-between", gap:16, flexWrap:"wrap",
       }}>
-        <div onClick={()=>setSection("home")} style={{ cursor:"pointer", display:"flex", alignItems:"baseline", gap:8 }}>
+        <div onClick={()=>setSection("processmap")} style={{ cursor:"pointer", display:"flex", alignItems:"baseline", gap:8 }}>
           <span style={{ fontSize:15, fontWeight:700, color:"#fafafa", letterSpacing:-0.3 }}>Farm to People</span>
           <span style={{ fontSize:11, color:"#52525b", fontFamily:"'JetBrains Mono',monospace", letterSpacing:0.5 }}>· workspace</span>
         </div>
